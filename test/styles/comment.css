@@ -1,0 +1,29 @@
+#comments_block tr, #comments_block td{
+
+	border: 1px solid;
+	border-radius: 4px 4px 4px 4px;
+	-moz-border-radius: 4px 4px 4px 4px;
+}
+#comments_block{
+	margin-top:50px;
+	
+	
+	padding-left:10px;
+}
+
+#form{
+	margin-top: 50px;
+	
+}
+#article_content{
+	text-align:justify;
+}
+#comment_content{
+	width:400px;
+	min-height:100px;
+}
+
+#container{
+	width:900px;
+	margin: 0 auto;
+}

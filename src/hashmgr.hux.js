@@ -1,19 +1,23 @@
 /**
     HTTP by Using XML (HUX) : Hash Manager
     Copyright (C) 2011  Florent FAYOLLE
-
-    This program is free software: you can redistribute it and/or modify
-    it under the terms of the GNU General Public License as published by
-    the Free Software Foundation, either version 3 of the License, or
-    (at your option) any later version.
-
-    This program is distributed in the hope that it will be useful,
-    but WITHOUT ANY WARRANTY; without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-    GNU General Public License for more details.
-
-    You should have received a copy of the GNU General Public License
-    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+    
+    Permission is hereby granted, free of charge, to any person obtaining a copy
+    of this software and associated documentation files (the "Software"), to deal
+    in the Software without restriction, including without limitation the rights
+    to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+    copies of the Software, and to permit persons to whom the Software is
+    furnished to do so, subject to the following conditions:
+    The above copyright notice and this permission notice shall be included in
+    all copies or substantial portions of the Software.
+//     
+    THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+    IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+    FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+    AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+    LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+    OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+    THE SOFTWARE.
 **/
 
 //hashmgr.hux.js
@@ -55,7 +59,7 @@ HUX.HashMgr = {
 			case 'remove':
 				if(HUX.HashMgr.hashchangeEnabled){
 					var sFn = sAction+'EventListener'; // sFn = addEventListener or removeEventListener
-					HUX.core[sFn](window, "hashchange", HUX.HashMgr.handleIfChangement);
+					HUX.core.Compat[sFn](window, "hashchange", HUX.HashMgr.handleIfChangement);
 				}
 				break;
 			default:
@@ -112,12 +116,12 @@ HUX.HashMgr = {
 	},
 	__last_timeStamp:0,
 	__callback_anchor: function(el){
-		HUX.core.addEventListener(el, "click", HUX.HashMgr.__handle_click);
+		HUX.core.Compat.addEventListener(el, "click", HUX.HashMgr.__handle_click);
 	},
 	__handle_click:function(ev){
-		var srcNode = HUX.core.getEventTarget(ev);
+		var srcNode = HUX.core.Compat.getEventTarget(ev);
 		location.hash += srcNode.getAttribute("href").replace(/^#/,",");
-		HUX.core.preventDefault(ev);
+		HUX.core.Compat.preventDefault(ev);
 	},
 	updateHashSilently: function(hash, keepPrevHash){
 		if( hash.replace(/^#/, "") !== location.hash.replace(/^#/, "") ){

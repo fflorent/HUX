@@ -2,19 +2,23 @@
  /**
     HTTP by Using XML (HUX) : Core
     Copyright (C) 2011  Florent FAYOLLE
-
-    This program is free software: you can redistribute it and/or modify
-    it under the terms of the GNU General Public License as published by
-    the Free Software Foundation, either version 3 of the License, or
-    (at your option) any later version.
-
-    This program is distributed in the hope that it will be useful,
-    but WITHOUT ANY WARRANTY; without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-    GNU General Public License for more details.
-
-    You should have received a copy of the GNU General Public License
-    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+    
+    Permission is hereby granted, free of charge, to any person obtaining a copy
+    of this software and associated documentation files (the "Software"), to deal
+    in the Software without restriction, including without limitation the rights
+    to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+    copies of the Software, and to permit persons to whom the Software is
+    furnished to do so, subject to the following conditions:
+    The above copyright notice and this permission notice shall be included in
+    all copies or substantial portions of the Software.
+    
+    THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+    IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+    FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+    AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+    LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+    OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+    THE SOFTWARE.
 **/
  
 // core.hux.js 
@@ -62,7 +66,7 @@ HUX.core = {
 		 * 	@args : the arguments to give to each listener
 		 */
 		trigger: function(evName, args){
-			HUX.core.foreach(HUX.core.HUXevents.__arrEv[evName], function(fn){
+			HUX.core.foreach(this.__arrEv[evName], function(fn){
 				var ret = fn.apply(window, args);
 				if(ret === false)
 					throw "trigger stoped";
@@ -161,14 +165,14 @@ HUX.core = {
 	inject:function(target, method, content){
 		var DOMContent;
 		if(typeof content === "string")
-			DOMContent = HUX.core.Inject.htmltodom(content, target);
+			DOMContent = this.Inject.htmltodom(content, target);
 		else if(content instanceof Array)
 			DOMContent = content;
 		else
 			throw new TypeError("content : invalid argument");
 		if(! method) // if method === null, default is REPLACEMENT
-			method = HUX.core.Inject.sMethods.REPLACE;
-		HUX.core.Inject.init.call(HUX.core.Inject, target, method, DOMContent); 
+			method = this.Inject.sMethods.REPLACE;
+		this.Inject.init.call(this.Inject, target, method, DOMContent); 
 	},
 	/**
 	 * DOM Selector Tool
@@ -367,7 +371,7 @@ HUX.core = {
 	*	opt.srcNode: Node that have targetNodes or appendNodes attribute
 	*/
 	xhr:function(opt){
-		return HUX.core.XHR.init.apply(HUX.core.XHR, arguments);
+		return this.XHR.init.apply(this.XHR, arguments);
 	},
 	/**
 	 * Attribute Manager for HUX
@@ -382,7 +386,7 @@ HUX.core = {
 				ret = srcNode.getAttribute( attrs[i] );
 			}
 			if(ret === null) // this might be because of non-support of Opera for getAttribute("hux:...")
-				ret = HUX.core.HUXattr.__getAttributeNS(srcNode, name);
+				ret = this.__getAttributeNS(srcNode, name);
 			if(ret === "") // correct odd behaviour of getAttributeNS, which returns "" if the attribute was not found
 				ret = null;
 			return ret;
@@ -404,35 +408,40 @@ HUX.core = {
 		}
 		
 	},
-	
-	// do we use addEventListener or attachEvent ?
-	__fn_addEventListener : (window.addEventListener? 'addEventListener':'attachEvent'),
-	__fn_removeEventListener : (window.removeEventListener ? 'removeEventListener':'detachEvent'),
-	// does the event name have to be prefixed with 'on' ? (yes with attachEvent, no with addEventListener)
-	__prefix_eventListener: (window.addEventListener? '':'on'),
 	/**
-	 * HUX.core.addEventListener(target, evName, fn);
-	 *	target : the event target 
-	 *	evName : the name of the event
-	 *	fn : the function to call when the event is triggered
+	 * functions for cross-browsers compatibilities
 	 */
-	addEventListener: function(target, evName, fn){
-		evName = this.__prefix_eventListener+evName;
-		return target[this.__fn_addEventListener](evName, fn, false);
+	Compat: {
+		// do we use addEventListener or attachEvent ?
+		__fn_addEventListener : (window.addEventListener? 'addEventListener':'attachEvent'),
+		__fn_removeEventListener : (window.removeEventListener ? 'removeEventListener':'detachEvent'),
+		// does the event name have to be prefixed with 'on' ? (yes with attachEvent, no with addEventListener)
+		__prefix_eventListener: (window.addEventListener? '':'on'),
+		/**
+		* HUX.core.compat.addEventListener(target, evName, fn);
+		*	target : the event target 
+		*	evName : the name of the event
+		*	fn : the function to call when the event is triggered
+		*/
+		addEventListener: function(target, evName, fn){
+			evName = this.__prefix_eventListener+evName;
+			return target[this.__fn_addEventListener](evName, fn, false);
+		},
+		removeEventListener: function(target, evName, fn){
+			evName = this.__prefix_eventListener+evName;
+			return target[this.__fn_removeEventListener](evName, fn, false);
+		},
+		getEventTarget: function(ev){
+			return window.event === undefined ? ev.target : event.srcElement;
+		},
+		preventDefault: function(ev){
+			if(window.event === undefined) // not IE
+				ev.preventDefault();
+			else // IE
+				event.cancelBubble = event.returnValue = false;
+		}
 	},
-	removeEventListener: function(target, evName, fn){
-		evName = this.__prefix_eventListener+evName;
-		return target[this.__fn_removeEventListener](evName, fn, false);
-	},
-	getEventTarget: function(ev){
-		return window.event === undefined ? ev.target : event.srcElement;
-	},
-	preventDefault: function(ev){
-		if(window.event === undefined) // not IE
-			ev.preventDefault();
-		else // IE
-			event.cancelBubble = event.returnValue = false;
-	},
+
 
 	
 	foreach: function(array, fn){
@@ -464,31 +473,35 @@ HUX.core = {
 	},
 	// just call init when the page is loaded... 
 	addModule: function(mod){
-		HUX.core.addEventListener(window, "load", function(){
+		this.Compat.addEventListener(window, "load", function(){
 			mod.init();
 		});
 	}
 };
-HUX.core.addModule(HUX.core);
+HUX.core.addModule( HUX.core );
 
 
 
 /**
     HTTP by Using XML (HUX) : Simple Loader
     Copyright (C) 2011  Florent FAYOLLE
-
-    This program is free software: you can redistribute it and/or modify
-    it under the terms of the GNU General Public License as published by
-    the Free Software Foundation, either version 3 of the License, or
-    (at your option) any later version.
-
-    This program is distributed in the hope that it will be useful,
-    but WITHOUT ANY WARRANTY; without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-    GNU General Public License for more details.
-
-    You should have received a copy of the GNU General Public License
-    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+    
+    Permission is hereby granted, free of charge, to any person obtaining a copy
+    of this software and associated documentation files (the "Software"), to deal
+    in the Software without restriction, including without limitation the rights
+    to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+    copies of the Software, and to permit persons to whom the Software is
+    furnished to do so, subject to the following conditions:
+    The above copyright notice and this permission notice shall be included in
+    all copies or substantial portions of the Software.
+    
+    THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+    IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+    FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+    AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+    LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+    OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+    THE SOFTWARE.
 **/
 
 
@@ -501,7 +514,7 @@ HUX.SimpleLoader = {
 	 * handler for Click Event
 	 */
 	__onclick: function(ev){
-		var srcNode = HUX.core.getEventTarget(ev) ;
+		var srcNode = HUX.core.Compat.getEventTarget(ev) ;
 		var opt = {
 			data:null,
 			url:srcNode.href,
@@ -512,10 +525,10 @@ HUX.SimpleLoader = {
 			srcNode:srcNode
 		};
 		HUX.core.xhr(opt);
-		HUX.core.preventDefault(ev);
+		HUX.core.Compat.preventDefault(ev);
 	},
 	__fnEach: function(el){
-		HUX.core.addEventListener(el, "click", HUX.SimpleLoader.__onclick );
+		HUX.core.Compat.addEventListener(el, "click", HUX.SimpleLoader.__onclick );
 	},
 	listen:function(context){
 		// for all anchor nodes having targetnode attributes, we listen to "click" events
@@ -530,19 +543,23 @@ HUX.core.addModule(HUX.SimpleLoader);
 /**
     HTTP by Using XML (HUX) : Hash Manager
     Copyright (C) 2011  Florent FAYOLLE
-
-    This program is free software: you can redistribute it and/or modify
-    it under the terms of the GNU General Public License as published by
-    the Free Software Foundation, either version 3 of the License, or
-    (at your option) any later version.
-
-    This program is distributed in the hope that it will be useful,
-    but WITHOUT ANY WARRANTY; without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-    GNU General Public License for more details.
-
-    You should have received a copy of the GNU General Public License
-    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+    
+    Permission is hereby granted, free of charge, to any person obtaining a copy
+    of this software and associated documentation files (the "Software"), to deal
+    in the Software without restriction, including without limitation the rights
+    to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+    copies of the Software, and to permit persons to whom the Software is
+    furnished to do so, subject to the following conditions:
+    The above copyright notice and this permission notice shall be included in
+    all copies or substantial portions of the Software.
+//     
+    THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+    IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+    FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+    AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+    LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+    OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+    THE SOFTWARE.
 **/
 
 //hashmgr.hux.js
@@ -584,7 +601,7 @@ HUX.HashMgr = {
 			case 'remove':
 				if(HUX.HashMgr.hashchangeEnabled){
 					var sFn = sAction+'EventListener'; // sFn = addEventListener or removeEventListener
-					HUX.core[sFn](window, "hashchange", HUX.HashMgr.handleIfChangement);
+					HUX.core.Compat[sFn](window, "hashchange", HUX.HashMgr.handleIfChangement);
 				}
 				break;
 			default:
@@ -641,12 +658,12 @@ HUX.HashMgr = {
 	},
 	__last_timeStamp:0,
 	__callback_anchor: function(el){
-		HUX.core.addEventListener(el, "click", HUX.HashMgr.__handle_click);
+		HUX.core.Compat.addEventListener(el, "click", HUX.HashMgr.__handle_click);
 	},
 	__handle_click:function(ev){
-		var srcNode = HUX.core.getEventTarget(ev);
+		var srcNode = HUX.core.Compat.getEventTarget(ev);
 		location.hash += srcNode.getAttribute("href").replace(/^#/,",");
-		HUX.core.preventDefault(ev);
+		HUX.core.Compat.preventDefault(ev);
 	},
 	updateHashSilently: function(hash, keepPrevHash){
 		if( hash.replace(/^#/, "") !== location.hash.replace(/^#/, "") ){
@@ -769,19 +786,23 @@ HUX.core.addModule(HUX.HashMgr);
  /**
     HTTP by Using XML (HUX) : Form Manager
     Copyright (C) 2011  Florent FAYOLLE
-
-    This program is free software: you can redistribute it and/or modify
-    it under the terms of the GNU General Public License as published by
-    the Free Software Foundation, either version 3 of the License, or
-    (at your option) any later version.
-
-    This program is distributed in the hope that it will be useful,
-    but WITHOUT ANY WARRANTY; without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-    GNU General Public License for more details.
-
-    You should have received a copy of the GNU General Public License
-    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+    
+    Permission is hereby granted, free of charge, to any person obtaining a copy
+    of this software and associated documentation files (the "Software"), to deal
+    in the Software without restriction, including without limitation the rights
+    to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+    copies of the Software, and to permit persons to whom the Software is
+    furnished to do so, subject to the following conditions:
+    The above copyright notice and this permission notice shall be included in
+    all copies or substantial portions of the Software.
+    
+    THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+    IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+    FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+    AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+    LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+    OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+    THE SOFTWARE.
 **/
  //form.hux.js
 
@@ -797,10 +818,10 @@ HUX.Form = {
 		HUX.core.Selector.byAttributeHUX("form", "targetnode", context, this.__fnEach);
 	},
 	__fnEach: function(el){
-		HUX.core.addEventListener(el, "submit", HUX.Form.onSubmit );
+		HUX.core.Compat.addEventListener(el, "submit", HUX.Form.onSubmit );
 	},
 	onSubmit: function(ev){
-		var arrData = [], form = HUX.core.getEventTarget(ev);
+		var arrData = [], form = HUX.core.Compat.getEventTarget(ev);
 		
 		var opt = {
 			data:null, // set below
@@ -824,7 +845,7 @@ HUX.Form = {
 		});
 		opt.data = arrData.join("&"); // 
 		HUX.core.xhr(opt);
-		HUX.core.preventDefault(ev);
+		HUX.core.Compat.preventDefault(ev);
 	}
 };
 HUX.core.addModule(HUX.Form);

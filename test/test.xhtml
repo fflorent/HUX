@@ -1,1 +1,19 @@
-test.html
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE html>
+<html
+  xmlns="http://www.w3.org/1999/xhtml"
+  xmlns:hux="http://www.example.org/HUX">
+  <!--NOTE : doit etre d'extension .xhtml sauf pour IE -->
+	<head>
+		<meta charset="utf-8"/>
+		<title>TEST</title>
+		<script type="text/javascript" src="../hux.js"></script>
+	</head>
+	<body>
+		<div id="container"></div>
+		<div id="container2">Default content for Container 2</div>
+		<p>No URL Update : <a href="content.html" hux:targetnode="container2">Click</a></p>
+		<p>Update URL : <a href="#!container=content.html" >Click</a></p>
+		<p>Replace container2 content : <a href="#!container2=content.html">URL update</a></p>
+	</body>
+</html>

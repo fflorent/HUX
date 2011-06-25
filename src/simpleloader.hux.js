@@ -30,29 +30,29 @@ HUX.SimpleLoader = {
 	 * handler for Click Event
 	 */
 	__onclick: function(ev){
-		var srcNode = HUX.core.Compat.getEventTarget(ev) ;
+		var srcNode = HUX.Core.Compat.getEventTarget(ev) ;
 		var opt = {
 			data:null,
 			url:srcNode.href,
 			method:'get',
 			async:true,
-			filling:HUX.core.HUXattr.getFillingMethod(srcNode),
-			target:HUX.core.HUXattr.getTargetNode(srcNode),
+			filling:HUX.Core.HUXattr.getFillingMethod(srcNode),
+			target:HUX.Core.HUXattr.getTargetNode(srcNode),
 			srcNode:srcNode
 		};
-		HUX.core.xhr(opt);
-		HUX.core.Compat.preventDefault(ev);
+		HUX.Core.xhr(opt);
+		HUX.Core.Compat.preventDefault(ev);
 	},
 	__fnEach: function(el){
-		HUX.core.Compat.addEventListener(el, "click", HUX.SimpleLoader.__onclick );
+		HUX.Core.Compat.addEventListener(el, "click", HUX.SimpleLoader.__onclick );
 	},
 	listen:function(context){
 		// for all anchor nodes having targetnode attributes, we listen to "click" events
-		HUX.core.Selector.byAttributeHUX("a", "targetnode", context, this.__fnEach);
+		HUX.Core.Selector.byAttributeHUX("a", "targetnode", context, this.__fnEach);
 	},
 	init: function(){
-		HUX.core.recursiveListen(this);
+		HUX.Core.recursiveListen(this);
 	}
 };
 
-HUX.core.addModule(HUX.SimpleLoader); 
+HUX.Core.addModule(HUX.SimpleLoader); 

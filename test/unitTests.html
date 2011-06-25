@@ -1,0 +1,185 @@
+ <!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" xmlns:hux="http://www.example.org/HUX">
+	<head>
+		<title>Unit Tests</title>
+		<script type="text/javascript" src="../hux.js">
+		</script>
+		<script type="text/javascript" src="http://code.jquery.com/qunit/qunit-git.js">
+		</script>
+		<link rel="stylesheet" type="text/css" href="http://code.jquery.com/qunit/qunit-git.css" />
+		
+	</head>
+	<body>
+		<script type="text/javascript">
+			//<![CDATA[
+			var $id = function(id){
+				return document.getElementById(id);
+			};
+			function injectSimpleLoader(){
+				var div = $id("interface");
+				div.innerHTML = "<a href='content.html' data-hux-targetnode='containerSimpleLoader'>click</a>";
+				return div.children[0];
+			}
+			function simulateClick(target){
+				target.click();
+				/*if(target.fireEvent)
+					target.fireEvent("onclick");
+				else{
+					var evt = document.createEvent("MouseEvents");
+					evt.initMouseEvent("click", false, false, window,
+					0, 0, 0, 0, 0, false, false, false, false, 0, null);
+					target.dispatchEvent(evt);
+				}*/
+			}
+			var getNbTestFn = function(){
+				var ret = 0, arr;
+				for(var mod in arrFnCheck){
+					arr = arrFnCheck[mod];
+					for(var i = 0; i < arr.length; i++)
+						ret++;
+				}
+				return ret;
+			};
+			window.setTimeout(function(){
+				module("END");
+				test("Number of remaining Functions", function(){
+					equal(getNbTestFn(), 0);
+				});
+			}, 1000);
+			var arrFnCheck = {
+			
+				"SL" /*SimpleLoader*/ : [
+					function(container){
+						test("first injection", function(){
+							equal(container.children.length, 1);
+							equal(container.children[0].className, "content1");
+						});
+					},
+					function(container){
+						test("prepend", function(){
+							equal(container.children.length, 2);
+							equal(container.children[0].className, "content2");
+						});
+					},
+					function(container){
+						test("append", function(){
+							equal( container.children.length, 3); 
+							equal((container.lastElementChild || container.lastChild).className, "content3");
+						});
+					},
+					function(container){
+						test("replace", function(){
+							equal(container.children.length, 1);
+							equal(container.children[0].className, "content1");
+						});
+					}
+				],
+				"Form": [
+					function(container){
+						test("form 1", function(){
+							var trs = container.getElementsByTagName("tr"), tr = trs[0];
+							var form = $id('formComment'), trC = tr.children;
+							equal(trs.length, 1, "TR injection test");
+							equal(trC.length, 2, "TD injection test");
+							equal( ( trC[0].textContent || trC[0].innerText).replace(/^[\s]*/g,""), form.login.value);
+							equal( trC[1].innerHTML, form.comment.value);
+						});
+					}
+				],
+				"HM": [
+					function(container){
+						test("first injection", function(){
+							equal(location.hash, '#!,'+container.id+"="+$id("interfaceHM").getElementsByTagName("a")[0].getAttribute("href"));
+							equal(container.children.length, 1);
+							equal(container.children[0].className, "content1");
+						});
+					}
+				]
+			};
+			
+			var testSimpleLoader = function(){
+				module("SimpleLoader");
+				var a, div= $id("interfaceSL"), container = $id("containerSimpleLoader");
+				
+				HUX.Core.HUXevents.bind(container, "afterInject", function(){
+					arrFnCheck.SL.shift().call(this, container);
+					do{ 
+						a = a.nextSibling;
+					}while(a !== null && (typeof a.href === "undefined" /* <=>! (a instanceof HTMLAnchorElement)*/) );
+					if(a !== null)
+						simulateClick(a);
+					else if(arrFnCheck.SL.length === 0)
+						testForms();
+				});
+				a= div.children[0];
+				simulateClick(a);
+			};
+			HUX.Form.clearAfterSubmit = false; // just keep the values and the innerHTML of the inputs
+			var testForms = function(){
+				module("Forms");
+				var form, div= $id("interfaceForms"), container = $id("containerForm");
+				HUX.Core.HUXevents.bind(container, "afterInject", function(){
+					arrFnCheck.Form.shift().call(this, container);
+					do{ 
+						form = form.nextSibling;
+					}while(form !== null && ! (typeof form.submit === "undefined" /* <=> !( form instanceof HTMLFormElement )*/) );
+					if(form !== null && form.submit)
+						form.submit();
+					else if(arrFnCheck.Form.length === 0)
+						testHM();
+				});
+				form= div.children[0];
+				simulateClick(form.submit);
+			};
+			
+			var testHM = function(){
+				module("Hash Manager");
+				var a, div = $id("interfaceHM"), container = $id("containerHM");
+				HUX.Core.HUXevents.bind(container, "afterInject", function(){
+					arrFnCheck.HM.shift().call(this, container);
+					do{
+						a = a.nextSibling;
+					}while(a !== null && (typeof a.href === "undefined" /* <=>! (a instanceof HTMLAnchorElement)*/) );
+					if(a !== null)
+						simulateClick(a);
+				});
+				a= div.getElementsByTagName("a")[0];
+				simulateClick(a);
+			};
+			
+			HUX.Core.Compat.addEventListener(window, "load", testSimpleLoader);
+			
+			
+			
+			//]]>
+			</script>
+		<h1 id="qunit-header">QUnit example</h1>
+		<h2 id="qunit-banner"></h2>
+		<div id="qunit-testrunner-toolbar"></div>
+		<h2 id="qunit-userAgent"></h2>
+		<ol id="qunit-tests"></ol>
+		<div id="qunit-fixture">test markup, will be hidden</div>
+		<br/><br/><br/>
+		<div id="containerSimpleLoader" style="display:none"></div>
+		<table id="containerForm" style="display:none">
+			
+		</table>
+		<div id="containerHM"></div>
+		<div id="interfaceSL" style="display:none">
+			<a href='contents/content1.html' data-hux-targetnode='containerSimpleLoader'>click</a>
+			<a href='contents/content2.html' data-targetnode='containerSimpleLoader' data-hux-filling="prepend">click</a>
+			<a href='contents/content3.html' targetnode='containerSimpleLoader' data-hux-filling="append">click</a>
+			<a href='contents/content1.html' data-hux-targetnode='containerSimpleLoader' data-hux-filling="replace">click</a>
+		</div>
+		<div id="interfaceForms" style="display:none">
+			<form id="formComment" action="CGI/comment.php" method="POST" data-hux-targetnode="containerForm">
+				<input type="text" name="login" value="John Doe" />
+				<textarea name="comment">Where am I?</textarea>
+				<input type="submit" name="submit"/>
+			</form>
+		</div>
+		<div id="interfaceHM">
+			<a href='#!containerHM=contents/content1.html'>click</a>
+		</div>
+	</body>
+</html>

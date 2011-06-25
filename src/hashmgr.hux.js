@@ -37,19 +37,19 @@ HUX.HashMgr = {
 		if(this.IFrameHack.enabled)
 			this.IFrameHack.createIFrame();
 		// we listen to any anchor beginning with "#!" (corresponding to CCS3 Selector : a[href^="#!"])
-		HUX.core.recursiveListen(HUX.HashMgr);
+		HUX.Core.recursiveListen(HUX.HashMgr);
 		// we treat location.hash
 		HUX.HashMgr.handler(null, true);
 	},
 	listen: function(context){
 		var fnFilter, fnEach = HUX.HashMgr.__callback_anchor, prefixedTN;
 		if(document.evaluate !== undefined){
-			prefixedTN = HUX.core.Selector.prefixTagName("a");
-			HUX.core.Selector.evaluate("//"+prefixedTN+"[starts-with(@href, '#!')]", context, fnEach);
+			prefixedTN = HUX.Core.Selector.prefixTagName("a");
+			HUX.Core.Selector.evaluate("//"+prefixedTN+"[starts-with(@href, '#!')]", context, fnEach);
 		}
 		else{
 			fnFilter = function(){  return this.getAttribute("href").indexOf("#!") === 0;  };
-			HUX.core.Selector.filterIE("a", fnFilter, context, fnEach);
+			HUX.Core.Selector.filterIE("a", fnFilter, context, fnEach);
 		}
 		
 	},
@@ -59,7 +59,7 @@ HUX.HashMgr = {
 			case 'remove':
 				if(HUX.HashMgr.hashchangeEnabled){
 					var sFn = sAction+'EventListener'; // sFn = addEventListener or removeEventListener
-					HUX.core.Compat[sFn](window, "hashchange", HUX.HashMgr.handleIfChangement);
+					HUX.Core.Compat[sFn](window, "hashchange", HUX.HashMgr.handleIfChangement);
 				}
 				break;
 			default:
@@ -90,7 +90,7 @@ HUX.HashMgr = {
 			HUX.HashMgr.handleIfChangement();
 		}
 		catch(ex){
-			HUX.core.logError(ex);
+			HUX.Core.logError(ex);
 			HUX.HashMgr.__watcher_cpt_ex++;
 			throw ex;
 		}
@@ -112,16 +112,16 @@ HUX.HashMgr = {
 			filling:null, // use default option (replace)
 			target:target
 		};
-		HUX.core.xhr(opt);
+		HUX.Core.xhr(opt);
 	},
 	__last_timeStamp:0,
 	__callback_anchor: function(el){
-		HUX.core.Compat.addEventListener(el, "click", HUX.HashMgr.__handle_click);
+		HUX.Core.Compat.addEventListener(el, "click", HUX.HashMgr.__handle_click);
 	},
 	__handle_click:function(ev){
-		var srcNode = HUX.core.Compat.getEventTarget(ev);
+		var srcNode = HUX.Core.Compat.getEventTarget(ev);
 		location.hash += srcNode.getAttribute("href").replace(/^#/,",");
-		HUX.core.Compat.preventDefault(ev);
+		HUX.Core.Compat.preventDefault(ev);
 	},
 	updateHashSilently: function(hash, keepPrevHash){
 		if( hash.replace(/^#/, "") !== location.hash.replace(/^#/, "") ){
@@ -237,7 +237,7 @@ HUX.HashMgr = {
 	}
 };
 
-HUX.core.addModule(HUX.HashMgr);
+HUX.Core.addModule(HUX.HashMgr);
 
 
 

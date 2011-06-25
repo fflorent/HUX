@@ -17,33 +17,33 @@
 **/
 
 // checker.hux.js
-HUX.checker = {
+HUX.Checker = {
 	init: function(){
 		this.check_targets();
 	},
 	
 	logError: function(strErr){
-		// we call HUX.core.logError with a timeout in order to avoid to stop the rest of the execution
-		setTimeout(HUX.core.logError, 0, strErr); 
+		// we call HUX.Core.logError with a timeout in order to avoid to stop the rest of the execution
+		setTimeout(HUX.Core.logError, 0, strErr); 
 	},
 	__get_targets: function(){
 		var targets = [];
 		// we get all id in href attributes : 
-		HUX.core.Selector.byAttribute("a", "href", null, function(el){
+		HUX.Core.Selector.byAttribute("a", "href", null, function(el){
 			var re = /!([^=]+)/g, res;
 			while( (res = re.exec(el.href)) !== null )
 				targets.push( res[1] );
 		});
 		// we get all targetnode attributes
-		HUX.core.Selector.byAttributeHUX("*", "targetnode", null, function(el){
-			targets.push( HUX.core.HUXattr.getAttributeHUX(el, "targetnode") );
+		HUX.Core.Selector.byAttributeHUX("*", "targetnode", null, function(el){
+			targets.push( HUX.Core.HUXattr.getAttributeHUX(el, "targetnode") );
 		});
 		return targets;
 	},
 	/* check the id of targetnode attributes and the id given in href attributes */
 	check_targets: function(){
 		var targets = this.__get_targets();
-		HUX.core.foreach(targets, function(targ){
+		HUX.Core.foreach(targets, function(targ){
 			if( document.getElementById(targ) === null){
 				this.logError("No Element of id=\""+targ+"\" found");
 			}
@@ -51,6 +51,6 @@ HUX.checker = {
 	}
 	
 };
-HUX.core.addModule( HUX.checker );
+HUX.Core.addModule( HUX.Checker );
 
 

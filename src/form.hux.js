@@ -22,48 +22,52 @@
  //form.hux.js
 
 HUX.Form = {
-	defaultFilling: HUX.core.Inject.sMethods.APPEND,
+	defaultFilling: HUX.Core.Inject.sMethods.APPEND,
 	// if true, the form is reset after each submit
 	clearAfterSubmit: true,
 	init: function(){
-		HUX.core.recursiveListen(HUX.Form);
+		HUX.Core.recursiveListen(HUX.Form);
 	},
-	// called by HUX.core.recursiveListen
+	// called by HUX.Core.recursiveListen
 	listen: function(context){
-		HUX.core.Selector.byAttributeHUX("form", "targetnode", context, this.__fnEach);
+		HUX.Core.Selector.byAttributeHUX("form", "targetnode", context, this.__fnEach);
 	},
 	__fnEach: function(el){
-		HUX.core.Compat.addEventListener(el, "submit", HUX.Form.onSubmit );
+		HUX.Core.Compat.addEventListener(el, "submit", HUX.Form.onSubmit );
+	},
+
+	serialize: function(el, arrData){
+		// TODO: explain the condition below : 
+		if( !el.disabled && 
+			(typeof el.getAttribute("type") === "undefined" || ! /radio|checkbox/.test(el.type) || el.checked) ){
+				arrData.push( el.name+"="+el.value );
+				// clear form (must need improvement)
+				if(HUX.Form.clearAfterSubmit && (el.type === "text" || el.tagName.toLowerCase() === "textarea") )
+					el.value = "";
+		}
 	},
 	onSubmit: function(ev){
-		var arrData = [], form = HUX.core.Compat.getEventTarget(ev);
+		var arrData = [], form = HUX.Core.Compat.getEventTarget(ev);
 		
 		var opt = {
 			data:null, // set below
 			url:form.action,
 			method:form.getAttribute("method"),
 			async:true,
-			filling:HUX.core.HUXattr.getFillingMethod(form) || HUX.Form.defaultFilling,
-			target:HUX.core.HUXattr.getTargetNode(form),
+			filling:HUX.Core.HUXattr.getFillingMethod(form) || HUX.Form.defaultFilling,
+			target:HUX.Core.HUXattr.getTargetNode(form),
 			srcNode:form
 		};
 		// we fill arrData : 
-		HUX.core.Selector.byAttribute("*", "name", form, function(el){
-			// TODO: explain the condition below : 
-			if( !el.disabled && 
-				(typeof el.getAttribute("type") === "undefined" || ! /radio|checkbox/.test(el.type) || el.checked) ){
-					arrData.push( el.name+"="+el.value );
-					// clear form (must need improvement)
-					if(HUX.Form.clearAfterSubmit && (el.type === "text" || el.tagName.toLowerCase() === "textarea") )
-						el.value = "";
-			}
+		HUX.Core.Selector.byAttribute("*", "name", form, function(el){
+			HUX.Form.serialize(el, arrData);
 		});
 		opt.data = arrData.join("&"); // 
-		HUX.core.xhr(opt);
-		HUX.core.Compat.preventDefault(ev);
+		HUX.Core.xhr(opt);
+		HUX.Core.Compat.preventDefault(ev);
 	}
 };
-HUX.core.addModule(HUX.Form);
+HUX.Core.addModule(HUX.Form);
 
 
 

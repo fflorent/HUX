@@ -51,35 +51,48 @@ HUX.Core = {
 			"requestError":{},
 			"afterInject":{}
 		},
-		/**
-		 * bind event for all nodes
-		 */
-		bindGlobal: function(evName, fn){
-			return this.bind("global", evName, fn);
-		},
-		unbindGlobal: function(evName, fn){
-			return this.unbind("global", evName, fn);
-		},
-		/**
-		 * sort of addEventListener
-		 * HUXevents.bind(target , evName, fn)
-		 * 	- target : the target of the event (optional)
-		 * 	- evName : the name of the event
-		 * 	- fn : the listener
-		 */
-		bind:function(target, evName, fn){
-			var arrEv = this.__arrEv, tid = target.id;
+		__addListener: function(key, evName, fn){
+			var arrEv = this.__arrEv;
 			if(arrEv[evName]){
-				if(! (tid in arrEv[evName]) )
-					arrEv[evName][tid] = [];
-				arrEv[evName][tid].push(fn);
+				if(! (key in arrEv[evName]) )
+					arrEv[evName][key] = [];
+				arrEv[evName][key].push(fn);
 			}
 			else
 				throw "the event "+evName+" does not exist for HUX";
 		},
+		__removeListener: function(key, evName, fn){
+			HUX.Core.removeElement(this.__arrEv[evName][key], fn);
+		},
+		/**
+		 * bind event for all nodes
+		 */
+		bindGlobal: function(evName, fn){
+			return this.__addListener("global", evName, fn);
+		},
+		unbindGlobal: function(evName, fn){
+			return this.__removeListener("global", evName, fn);
+		},
+		__checktid: function(callerName, target){
+			if(!target.id)
+				throw callerName+": first argument must be an HTMLElement with an id";
+			
+		},
+		/**
+		 * sort of addEventListener
+		 * HUXevents.bind(target , evName, fn)
+		 * 	- target : the target of the event. Can be a 
+		 * 	- evName : the name of the event
+		 * 	- fn : the listener
+		 */
+		bind:function(target, evName, fn){
+			this.__checktid("HUXevents.bind", target);
+			return this.__addListener(target.id, evName, fn);
+		},
 		// sort of removeEventListener
 		unbind: function(target, evName, fn){
-			HUX.Core.removeElement(this.__arrEv[evName][target], fn);
+			this.__checktid("HUXevents.unbind", target);
+			return this.__removeListener(target.id, evName, fn);
 		},
 		/**
 		 * trigger all event Listener for a specific event 
@@ -594,7 +607,6 @@ HUX.Core.addModule(HUX.SimpleLoader);
 **/
 
 //hashmgr.hux.js
-
 HUX.HashMgr = {
 	// do we use asynchronous requests
 	asyncReq: false,
@@ -645,14 +657,16 @@ HUX.HashMgr = {
 	timer:100,
 	// handle each time the hash has changed
 	handleIfChangement: function(ev){
+		//info.push("enter");
 		var hash = location.hash;
 		if(hash !== HUX.HashMgr.__prev_hash && !HUX.HashMgr.inTreatment){
+			//info.push("diff");
 			try{
 				HUX.HashMgr.inTreatment = true;
 				HUX.HashMgr.handler(ev);
 			}
 			finally{
-				HUX.HashMgr.__prev_hash = hash;
+				HUX.HashMgr.__prev_hash = location.hash;
 				HUX.HashMgr.inTreatment = false;
 			}
 		}
@@ -698,17 +712,19 @@ HUX.HashMgr = {
 	},
 	updateHashSilently: function(hash, keepPrevHash){
 		if( hash.replace(/^#/, "") !== location.hash.replace(/^#/, "") ){
-			// temporary, we disable the event Listener 
-			/*HUX.HashMgr.mgrListener('remove');*/
 			
-			// we "cancel" the previous location.hash which may be incorrect
-			if(!keepPrevHash) // keepPrevHash === true when called by init()
-				history.back();
-			
-			location.hash = hash;
-			/*setTimeout(function(){
-				HUX.HashMgr.mgrListener('add');
-			}, 0);*/
+			if(history.replaceState){
+				var fn = history[ keepPrevHash ? "pushState" : "replaceState" ];
+				fn.call(history, {}, document.title, hash);
+			}
+			else{
+				// we "cancel" the previous location.hash which may be incorrect
+				if(!keepPrevHash){ // keepPrevHash === true when called by init()
+					history.back();
+					//info.push("back()");
+				}
+				location.hash = hash;
+			}
 		}
 		
 	},
@@ -811,7 +827,6 @@ HUX.HashMgr = {
 };
 
 HUX.Core.addModule(HUX.HashMgr);
-
 
 
  /**

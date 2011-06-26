@@ -21,15 +21,16 @@
 				return div.children[0];
 			}
 			function simulateClick(target){
-				target.click();
-				/*if(target.fireEvent)
+				if("click" in target)
+					target.click();
+				else if(target.fireEvent)
 					target.fireEvent("onclick");
 				else{
 					var evt = document.createEvent("MouseEvents");
 					evt.initMouseEvent("click", false, false, window,
 					0, 0, 0, 0, 0, false, false, false, false, 0, null);
 					target.dispatchEvent(evt);
-				}*/
+				}
 			}
 			var getNbTestFn = function(){
 				var ret = 0, arr;
@@ -89,7 +90,7 @@
 				"HM": [
 					function(container){
 						test("first injection", function(){
-							equal(location.hash, '#!,'+container.id+"="+$id("interfaceHM").getElementsByTagName("a")[0].getAttribute("href"));
+							equal(location.hash, $id("interfaceHM").getElementsByTagName("a")[0].getAttribute("href"));
 							equal(container.children.length, 1);
 							equal(container.children[0].className, "content1");
 						});

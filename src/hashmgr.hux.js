@@ -21,7 +21,6 @@
 **/
 
 //hashmgr.hux.js
-
 HUX.HashMgr = {
 	// do we use asynchronous requests
 	asyncReq: false,
@@ -72,14 +71,16 @@ HUX.HashMgr = {
 	timer:100,
 	// handle each time the hash has changed
 	handleIfChangement: function(ev){
+		//info.push("enter");
 		var hash = location.hash;
 		if(hash !== HUX.HashMgr.__prev_hash && !HUX.HashMgr.inTreatment){
+			//info.push("diff");
 			try{
 				HUX.HashMgr.inTreatment = true;
 				HUX.HashMgr.handler(ev);
 			}
 			finally{
-				HUX.HashMgr.__prev_hash = hash;
+				HUX.HashMgr.__prev_hash = location.hash;
 				HUX.HashMgr.inTreatment = false;
 			}
 		}
@@ -125,17 +126,19 @@ HUX.HashMgr = {
 	},
 	updateHashSilently: function(hash, keepPrevHash){
 		if( hash.replace(/^#/, "") !== location.hash.replace(/^#/, "") ){
-			// temporary, we disable the event Listener 
-			/*HUX.HashMgr.mgrListener('remove');*/
 			
-			// we "cancel" the previous location.hash which may be incorrect
-			if(!keepPrevHash) // keepPrevHash === true when called by init()
-				history.back();
-			
-			location.hash = hash;
-			/*setTimeout(function(){
-				HUX.HashMgr.mgrListener('add');
-			}, 0);*/
+			if(history.replaceState){
+				var fn = history[ keepPrevHash ? "pushState" : "replaceState" ];
+				fn.call(history, {}, document.title, hash);
+			}
+			else{
+				// we "cancel" the previous location.hash which may be incorrect
+				if(!keepPrevHash){ // keepPrevHash === true when called by init()
+					history.back();
+					//info.push("back()");
+				}
+				location.hash = hash;
+			}
 		}
 		
 	},
@@ -238,6 +241,5 @@ HUX.HashMgr = {
 };
 
 HUX.Core.addModule(HUX.HashMgr);
-
 
 

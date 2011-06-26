@@ -39,6 +39,7 @@ HUX.HashMgr = {
 		HUX.Core.recursiveListen(HUX.HashMgr);
 		// we treat location.hash
 		HUX.HashMgr.handler(null, true);
+		HUX.Core.HUXevents.__arrEv["afterHashChanged"] = [];
 	},
 	listen: function(context){
 		var fnFilter, fnEach = HUX.HashMgr.__callback_anchor, prefixedTN;
@@ -82,6 +83,7 @@ HUX.HashMgr = {
 			finally{
 				HUX.HashMgr.__prev_hash = location.hash;
 				HUX.HashMgr.inTreatment = false;
+				HUX.Core.HUXevents.trigger("afterHashChanged", {"new_hash":HUX.HashMgr.__prev_hash});
 			}
 		}
 	},

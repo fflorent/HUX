@@ -7,11 +7,15 @@
 		<script type="text/javascript" src="http://code.jquery.com/qunit/qunit-git.js">
 		</script>
 		<link rel="stylesheet" type="text/css" href="http://code.jquery.com/qunit/qunit-git.css" />
+		<meta http-equiv="Cache-Control" content="no-cache" />
+		<meta http-equiv="Pragma" content="no-cache" />
+		<meta http-equiv="Expires" content="0" /> 
 		
 	</head>
 	<body>
 		<script type="text/javascript">
 			//<![CDATA[
+			location.hash = "";
 			var $id = function(id){
 				return document.getElementById(id);
 			};
@@ -136,7 +140,7 @@
 			var testHM = function(){
 				module("Hash Manager");
 				var a, div = $id("interfaceHM"), container = $id("containerHM");
-				HUX.Core.HUXevents.bind(container, "afterInject", function(){
+				HUX.Core.HUXevents.bindGlobal("afterHashChanged", function(){
 					arrFnCheck.HM.shift().call(this, container);
 					do{
 						a = a.nextSibling;

@@ -292,7 +292,7 @@ HUX.Core = {
 		 * 
 		 * evaluate(sXpath, context, fnEach)
 		 * 	sXpath : xpath String
-		 * 	context : the node where we will search for results (default : document)
+		 * 	context : the node where we will search for results (must have an id or be a documentElement; default : document)
 		 * 	fnEach : the function executed for each results
 		 * 
 		 * See Also prefixTagName for convenience with elements tagnames
@@ -300,6 +300,8 @@ HUX.Core = {
 		evaluate:function(sXpath, context, fnEach){
 			context = context || document.documentElement;
 			fnEach = fnEach || function(){};
+			if(context.id)
+				sXpath = ("//*[@id='"+context.id+"']"+sXpath) ;
 			var results = document.evaluate(sXpath, context, this.__nsResolver, XPathResult.ANY_TYPE, null); 
 			var thisResult;
 			var ret = [];

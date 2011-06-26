@@ -293,7 +293,7 @@ HUX.Core = {
 		 * 
 		 * evaluate(sXpath, context, fnEach)
 		 * 	sXpath : xpath String
-		 * 	context : the node where we will search for results (default : document)
+		 * 	context : the node where we will search for results (must have an id or be a documentElement; default : document)
 		 * 	fnEach : the function executed for each results
 		 * 
 		 * See Also prefixTagName for convenience with elements tagnames
@@ -301,6 +301,8 @@ HUX.Core = {
 		evaluate:function(sXpath, context, fnEach){
 			context = context || document.documentElement;
 			fnEach = fnEach || function(){};
+			if(context.id)
+				sXpath = ("//*[@id='"+context.id+"']"+sXpath) ;
 			var results = document.evaluate(sXpath, context, this.__nsResolver, XPathResult.ANY_TYPE, null); 
 			var thisResult;
 			var ret = [];
@@ -625,6 +627,7 @@ HUX.HashMgr = {
 		HUX.Core.recursiveListen(HUX.HashMgr);
 		// we treat location.hash
 		HUX.HashMgr.handler(null, true);
+		HUX.Core.HUXevents.__arrEv["afterHashChanged"] = [];
 	},
 	listen: function(context){
 		var fnFilter, fnEach = HUX.HashMgr.__callback_anchor, prefixedTN;
@@ -668,6 +671,7 @@ HUX.HashMgr = {
 			finally{
 				HUX.HashMgr.__prev_hash = location.hash;
 				HUX.HashMgr.inTreatment = false;
+				HUX.Core.HUXevents.trigger("afterHashChanged", {"new_hash":HUX.HashMgr.__prev_hash});
 			}
 		}
 	},

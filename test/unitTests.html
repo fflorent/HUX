@@ -9,8 +9,7 @@
 		<link rel="stylesheet" type="text/css" href="http://code.jquery.com/qunit/qunit-git.css" />
 		<meta http-equiv="Cache-Control" content="no-cache" />
 		<meta http-equiv="Pragma" content="no-cache" />
-		<meta http-equiv="Expires" content="0" /> 
-		
+		<meta http-equiv="Expires" content="0" />
 	</head>
 	<body>
 		<script type="text/javascript">
@@ -76,6 +75,11 @@
 						test("replace", function(){
 							equal(container.children.length, 1);
 							equal(container.children[0].className, "content1");
+						});
+					},
+					function(container){
+						test("script injection", function(){
+							ok($id("pC5"), "HTML Injection");
 						});
 					}
 				],
@@ -175,6 +179,7 @@
 			<a href='contents/content2.html' data-targetnode='containerSimpleLoader' data-hux-filling="prepend">click</a>
 			<a href='contents/content3.html' targetnode='containerSimpleLoader' data-hux-filling="append">click</a>
 			<a href='contents/content1.html' data-hux-targetnode='containerSimpleLoader' data-hux-filling="replace">click</a>
+			<a href='contents/content5.html' data-hux-targetnode='containerSimpleLoader' data-hux-filling="replace">click</a>
 		</div>
 		<div id="interfaceForms" style="display:none">
 			<form id="formComment" action="CGI/comment.php" method="POST" data-hux-targetnode="containerForm">

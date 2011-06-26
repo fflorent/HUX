@@ -31,7 +31,6 @@ var HUX = {};
 HUX.Core = {
 	init: function(){
 		this.Selector.init();
-		
 	},
 	namespace: "http://www.example.org/HUX",
 	/**
@@ -130,7 +129,7 @@ HUX.Core = {
 		 * 	@DOMContent : Array of elements to be added to @target
 		 */
 		init: function(target, method, DOMContent){
-			var sMethods = this.sMethods, firstChild, done = false;
+			var sMethods = this.sMethods, firstChild, done = false, inserted, aInserted = [];
 			switch(method){
 				case sMethods.PREPEND:
 					if(target.childNodes.length > 0){ // we use InsertBefore
@@ -149,7 +148,7 @@ HUX.Core = {
 				case sMethods.APPEND: 
 					HUX.Core.HUXevents.trigger("beforeInject", {target: target, children: DOMContent});
 					while(DOMContent.length > 0)
-						target.appendChild(DOMContent[0]);
+						aInserted.push( target.appendChild(DOMContent[0]) );
 					done = true;
 					break;
 					
@@ -159,7 +158,7 @@ HUX.Core = {
 					return this.init(target, sMethods.APPEND, DOMContent);
 			}
 			if(done)
-				HUX.Core.HUXevents.trigger("afterInject", {target: target, children: DOMContent});
+				HUX.Core.HUXevents.trigger("afterInject", {target: target, children: aInserted});
 		},
 		// constants
 		sMethods:{

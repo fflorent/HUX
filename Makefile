@@ -4,7 +4,7 @@ SRC=$(ROOT)/src
 CORE=$(SRC)/core.hux.js
 
 
-all: core simpleloader hashmgr form scriptinjecter
+all: core simpleloader hashmgr hashmgr4indexing form scriptinjecter
 	@@echo "generation done";
 all-dev: all checker
 
@@ -16,6 +16,8 @@ simpleloader: core
 	@@cat $(SRC)/simpleloader.hux.js >> $(HUX_JS);
 hashmgr: core
 	@@cat $(SRC)/hashmgr.hux.js >> $(HUX_JS);
+hashmgr4indexing: hashmgr
+	@@cat $(SRC)/hashmgr4indexing.hux.js >> $(HUX_JS);
 form:	core
 	@@cat $(SRC)/form.hux.js >> $(HUX_JS);
 scriptinjecter: core

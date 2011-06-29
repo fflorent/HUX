@@ -524,5 +524,20 @@ HUX.Core = {
 
 HUX.Core.addModule( HUX.Core );
 
-
-
+/**
+* Function#hux_wrap(wrapper) -> Function
+* - wrapper (Function): The function to use as a wrapper.
+*
+* Returns a function "wrapped" around the original function.
+*
+* for the full documentation, see http://www.prototypejs.org/api/function/wrap
+**/
+// inspired from Prototype Wrap Method : https://github.com/sstephenson/prototype/blob/master/src/prototype/lang/function.js
+Function.prototype.hux_wrap = function(fn){
+	var __method = this;
+	return function(){
+		var a = [__method];
+		Array.prototype.push.apply(a, arguments);
+		return fn.apply(this, a);
+	};
+};

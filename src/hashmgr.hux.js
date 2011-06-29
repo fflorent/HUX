@@ -10,7 +10,7 @@
     furnished to do so, subject to the following conditions:
     The above copyright notice and this permission notice shall be included in
     all copies or substantial portions of the Software.
-//     
+
     THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
     IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
     FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
@@ -26,6 +26,7 @@ HUX.HashMgr = {
 	asyncReq: false,
 	// does the browser support [on]hashchange event ?
 	hashchangeEnabled: null,
+	
 	inTreatment: false, // sort of mutex
 	init:function(){
 		this.hashchangeEnabled = ( "onhashchange" in window) && (! document.documentMode || document.documentMode >= 8);
@@ -41,6 +42,7 @@ HUX.HashMgr = {
 		HUX.HashMgr.handler(null, true);
 		HUX.Core.HUXevents.__arrEv["afterHashChanged"] = [];
 	},
+	
 	listen: function(context){
 		var fnFilter, fnEach = HUX.HashMgr.__callback_anchor, prefixedTN;
 		if(document.evaluate !== undefined){
@@ -51,7 +53,6 @@ HUX.HashMgr = {
 			fnFilter = function(){  return this.getAttribute("href").indexOf("#!") === 0;  };
 			HUX.Core.Selector.filterIE("a", fnFilter, context, fnEach);
 		}
-		
 	},
 	mgrListener: function(sAction){
 		switch(sAction){

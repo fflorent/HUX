@@ -25,20 +25,20 @@
 
 
 HUX.SimpleLoader = {
-	sTargetNode:"targetnode",
+	sTarget:"target",
 	/**
 	 * handler for Click Event
 	 */
 	__onclick: function(ev){
-		var srcNode = HUX.Core.Compat.getEventTarget(ev) ;
+		var srcElement = HUX.Core.Compat.getEventTarget(ev) ;
 		var opt = {
 			data:null,
-			url:srcNode.href,
+			url:srcElement.href,
 			method:'get',
 			async:true,
-			filling:HUX.Core.HUXattr.getFillingMethod(srcNode),
-			target:HUX.Core.HUXattr.getTargetNode(srcNode),
-			srcNode:srcNode
+			filling:HUX.Core.HUXattr.getFillingMethod(srcElement),
+			target:HUX.Core.HUXattr.getTarget(srcElement),
+			srcElement:srcElement
 		};
 		HUX.Core.xhr(opt);
 		HUX.Core.Compat.preventDefault(ev);
@@ -47,8 +47,8 @@ HUX.SimpleLoader = {
 		HUX.Core.Compat.addEventListener(el, "click", HUX.SimpleLoader.__onclick );
 	},
 	listen:function(context){
-		// for all anchor nodes having targetnode attributes, we listen to "click" events
-		HUX.Core.Selector.byAttributeHUX("a", this.sTargetNode, context, this.__fnEach);
+		// for all anchor elements having target attributes, we listen to "click" events
+		HUX.Core.Selector.byAttributeHUX("a", this.sTarget, context, this.__fnEach);
 	},
 	init: function(){
 		HUX.Core.recursiveListen(this);

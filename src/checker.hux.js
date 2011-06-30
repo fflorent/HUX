@@ -34,13 +34,13 @@ HUX.Checker = {
 			while( (res = re.exec(el.href)) !== null )
 				targets.push( res[1] );
 		});
-		// we get all targetnode attributes
-		HUX.Core.Selector.byAttributeHUX("*", "targetnode", null, function(el){
-			targets.push( HUX.Core.HUXattr.getAttributeHUX(el, "targetnode") );
+		// we get all target attributes
+		HUX.Core.Selector.byAttributeHUX("*", "target", null, function(el){
+			targets.push( HUX.Core.HUXattr.getAttributeHUX(el, "target") );
 		});
 		return targets;
 	},
-	/* check the id of targetnode attributes and the id given in href attributes */
+	/* check the id of target attributes and the id given in href attributes */
 	check_targets: function(){
 		var targets = this.__get_targets();
 		HUX.Core.foreach(targets, function(targ){

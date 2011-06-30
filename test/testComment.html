@@ -6,6 +6,11 @@
 		<title>Example of comments post system</title>
 		<script TYPE="text/javascript" src="../hux.js"></script>
 		<link rel="stylesheet" type="text/css" href="styles/comment.css" />
+		<style type="text/css">
+			.hux_loading{
+				opacity:0.5;
+			}
+		</style>
 	</head>
 	<body>
 		<div id="container">
@@ -26,7 +31,8 @@
 							<td class="comment">This Article is useless! <br/> I lost 5 minutes to read this useless Article!</td>
 						</tr>
 				</table>
-				<form action="CGI/comment.php" method="POST" data-hux-targetnode="comments" id="form">
+				<form action="CGI/comment.php" method="POST" data-hux-target="comments" id="form">
+					<input type="hidden" name="sleep" value="2" />
 					<p>login :<br/><input type="text" name="login" /></p>
 					<p>Comment : <br/><textarea name="comment" id="comment_content" ></textarea></p>
 					<p><input type="submit" /></p>

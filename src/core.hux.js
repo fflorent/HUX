@@ -36,10 +36,11 @@ HUX.Core = {
 	/**
 	 * HUX specific event Manager 
 	 * Events :
-	 *  - beforeInject : triggered before injecting content to the target node. 2 arguments : event.target = the target node, event.children = the nodes to add
-	 *  - afterInject : triggered after injecting content to the target node. 2 arguments : event.target = the target node, event.children = the added nodes
-	 *  - beforeEmpty : triggered before emptying target node. 1 argument : event.target=the node to empty
+	 *  - beforeInject : triggered before injecting content to the target element. 2 arguments : event.target = the target element, event.children = the elements to add
+	 *  - afterInject : triggered after injecting content to the target element. 2 arguments : event.target = the target element, event.children = the added elements
+	 *  - beforeEmpty : triggered before emptying target element. 1 argument : event.target=the element to empty
 	 *  - requestError : triggered if an XMLHttpRequest failed. 1 argument : event.xhr = the XHR object
+	 *  - loading : triggered when a HUX request is running. 1 argument : event.target = the target of the HUX request
 	 */
 	HUXevents:{
 		// array of listener for each event
@@ -47,7 +48,8 @@ HUX.Core = {
 			"beforeInject":{},
 			"beforeEmpty":{},
 			"requestError":{},
-			"afterInject":{}
+			"afterInject":{},
+			"loading":{}
 		},
 		__addListener: function(key, evName, fn){
 			var arrEv = this.__arrEv;
@@ -63,7 +65,7 @@ HUX.Core = {
 			HUX.Core.removeElement(this.__arrEv[evName][key], fn);
 		},
 		/**
-		 * bind event for all nodes
+		 * bind event for all elements
 		 */
 		bindGlobal: function(evName, fn){
 			return this.__addListener("global", evName, fn);
@@ -104,7 +106,7 @@ HUX.Core = {
 			if(tid)
 				lsters = lsters.concat(arrEv[evName][tid] || []);
 			lsters = lsters.concat(arrEv[evName]["global"] || []);
-			
+			event.type = evName;
 			HUX.Core.foreach(lsters, function(fn){
 				var ret = fn.call(window, event);
 				if(ret === false)
@@ -183,7 +185,7 @@ HUX.Core = {
 		/**
 		 * convert HTML String to DOM
 		 * @sHtml : String containing HTML
-		 * @context : the node designed to receive the content (optionnal)
+		 * @context : the element designed to receive the content (optionnal)
 		 */
 		htmltodom: function(sHtml, context){
 			var parent = context ? context.cloneNode(false) : document.createElement('div');
@@ -237,10 +239,10 @@ HUX.Core = {
 			return this.__prefixTN+tagName;
 		},
 		/**
-		 * Select nodes by their attributes
+		 * Select elements by their attributes
 		 * byAttribute(attr, context, fnEach)
 		 * 	@attr : String, attribute to look for
-		 * 	@context : the node in which one will search (optionnal)
+		 * 	@context : the element in which one will search (optionnal)
 		 * 	@fnEach : function executed for each result (optionnal)
 		 */
 		byAttribute: function(tagName, attr, context, fnEach){
@@ -291,7 +293,7 @@ HUX.Core = {
 		 * 
 		 * evaluate(sXpath, context, fnEach)
 		 * 	sXpath : xpath String
-		 * 	context : the node where we will search for results (must have an id or be a documentElement; default : document)
+		 * 	context : the element where we will search for results (must have an id or be a documentElement; default : document)
 		 * 	fnEach : the function executed for each results
 		 * 
 		 * See Also prefixTagName for convenience with elements tagnames
@@ -364,6 +366,7 @@ HUX.Core = {
 				else
 					xhr.open(opt.method, opt.url, opt.async);
 				
+				HUX.Core.HUXevents.trigger("loading", {target:opt.target});
 				this.setReadystatechange(xhr, opt.filling, opt.target);
 				xhr.setRequestHeader("Content-Type", opt.contentType || "application/x-www-form-urlencoded");
 				xhr.send(data);
@@ -414,7 +417,7 @@ HUX.Core = {
 	*	opt.async : request is asynchronous (opt.async = true) or synchronous (opt.async = false) ?
 	*	opt.username, opt.password : login and password
 	*	opt.contentType: Content-Type Request Header
-	*	opt.srcNode: Node that have targetNodes or appendNodes attribute
+	*	opt.srcElement: Element that have "[prefix]target" attribute
 	*/
 	xhr:function(opt){
 		return this.XHR.init.apply(this.XHR, arguments);
@@ -423,25 +426,25 @@ HUX.Core = {
 	 * Attribute Manager for HUX
 	 */
 	HUXattr: {
-		__getAttributeNS: function(srcNode, name){
-			return srcNode.getAttributeNS ? srcNode.getAttributeNS(HUX.Core.namespace, name) : srcNode.getAttribute("hux:"+name);
+		__getAttributeNS: function(srcElement, name){
+			return srcElement.getAttributeNS ? srcElement.getAttributeNS(HUX.Core.namespace, name) : srcElement.getAttribute("hux:"+name);
 		},
-		getAttributeHUX: function(srcNode, name){
+		getAttributeHUX: function(srcElement, name){
 			var ret = null,  attrs = this.getAttrAllPrefixes(name), i;
 			for(i = 0; i < attrs.length && ret === null; i++){
-				ret = srcNode.getAttribute( attrs[i] );
+				ret = srcElement.getAttribute( attrs[i] );
 			}
 			if(ret === null) // this might be because of non-support of Opera for getAttribute("hux:...")
-				ret = this.__getAttributeNS(srcNode, name);
+				ret = this.__getAttributeNS(srcElement, name);
 			if(ret === "") // correct odd behaviour of getAttributeNS, which returns "" if the attribute was not found
 				ret = null;
 			return ret;
 		},
-		getFillingMethod: function(srcNode){
-			return this.getAttributeHUX(srcNode, "filling");
+		getFillingMethod: function(srcElement){
+			return this.getAttributeHUX(srcElement, "filling");
 		},
-		getTargetNode: function(srcNode){
-			var idTn = this.getAttributeHUX(srcNode, "targetnode");
+		getTarget: function(srcElement){
+			var idTn = this.getAttributeHUX(srcElement, "target");
 			return document.getElementById(idTn);
 		},
 		getAttrAllPrefixes: function(attr){
@@ -501,7 +504,7 @@ HUX.Core = {
 		return array.push.apply(array, rest);
 	},
 	
-	// ensures that any node added by HUX would be listened
+	// ensures that any element added by HUX would be listened
 	recursiveListen: function(jsNamespace){
 		jsNamespace.listen(document.documentElement);
 		HUX.Core.HUXevents.bindGlobal("beforeInject", function(event){

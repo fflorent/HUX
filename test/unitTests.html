@@ -20,7 +20,7 @@
 			};
 			function injectSimpleLoader(){
 				var div = $id("interface");
-				div.innerHTML = "<a href='content.html' data-hux-targetnode='containerSimpleLoader'>click</a>";
+				div.innerHTML = "<a href='content.html' data-hux-target='containerSimpleLoader'>click</a>";
 				return div.children[0];
 			}
 			function simulateClick(target){
@@ -175,14 +175,14 @@
 		</table>
 		<div id="containerHM"></div>
 		<div id="interfaceSL" style="display:none">
-			<a href='contents/content1.html' data-hux-targetnode='containerSimpleLoader'>click</a>
-			<a href='contents/content2.html' data-targetnode='containerSimpleLoader' data-hux-filling="prepend">click</a>
-			<a href='contents/content3.html' targetnode='containerSimpleLoader' data-hux-filling="append">click</a>
-			<a href='contents/content1.html' data-hux-targetnode='containerSimpleLoader' data-hux-filling="replace">click</a>
-			<a href='contents/content5.html' data-hux-targetnode='containerSimpleLoader' data-hux-filling="replace">click</a>
+			<a href='contents/content1.html' data-hux-target='containerSimpleLoader'>click</a>
+			<a href='contents/content2.html' data-target='containerSimpleLoader' data-hux-filling="prepend">click</a>
+			<a href='contents/content3.html' target='containerSimpleLoader' data-hux-filling="append">click</a>
+			<a href='contents/content1.html' data-hux-target='containerSimpleLoader' data-hux-filling="replace">click</a>
+			<a href='contents/content5.html' data-hux-target='containerSimpleLoader' data-hux-filling="replace">click</a>
 		</div>
 		<div id="interfaceForms" style="display:none">
-			<form id="formComment" action="CGI/comment.php" method="POST" data-hux-targetnode="containerForm">
+			<form id="formComment" action="CGI/comment.php" method="POST" data-hux-target="containerForm">
 				<input type="text" name="login" value="John Doe" />
 				<textarea name="comment">Where am I?</textarea>
 				<input type="submit" name="submit"/>

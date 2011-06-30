@@ -30,7 +30,7 @@ HUX.Form = {
 	},
 	// called by HUX.Core.recursiveListen
 	listen: function(context){
-		HUX.Core.Selector.byAttributeHUX("form", "targetnode", context, this.__fnEach);
+		HUX.Core.Selector.byAttributeHUX("form", "target", context, this.__fnEach);
 	},
 	__fnEach: function(el){
 		HUX.Core.Compat.addEventListener(el, "submit", HUX.Form.onSubmit );
@@ -55,8 +55,8 @@ HUX.Form = {
 			method:form.getAttribute("method"),
 			async:true,
 			filling:HUX.Core.HUXattr.getFillingMethod(form) || HUX.Form.defaultFilling,
-			target:HUX.Core.HUXattr.getTargetNode(form),
-			srcNode:form
+			target:HUX.Core.HUXattr.getTarget(form),
+			srcElement:form
 		};
 		// we fill arrData : 
 		HUX.Core.Selector.byAttribute("*", "name", form, function(el){

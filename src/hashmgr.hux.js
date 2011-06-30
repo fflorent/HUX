@@ -123,8 +123,8 @@ HUX.HashMgr = {
 		HUX.Core.Compat.addEventListener(el, "click", HUX.HashMgr.__handle_click);
 	},
 	__handle_click:function(ev){
-		var srcNode = HUX.Core.Compat.getEventTarget(ev);
-		location.hash += srcNode.getAttribute("href").replace(/^#/,",");
+		var srcElement = HUX.Core.Compat.getEventTarget(ev);
+		location.hash += srcElement.getAttribute("href").replace(/^#/,",");
 		HUX.Core.Compat.preventDefault(ev);
 	},
 	updateHashSilently: function(hash, keepPrevHash){
@@ -166,7 +166,7 @@ HUX.HashMgr = {
 			target = document.getElementById(sTarget);
 			url = new_hashObj[sTarget];
 			hash_found = this.__hashObj[sTarget];
-			if(target!== null && url !== "__default"){ // if the URL given is __default, we load the default content in the target node
+			if(target!== null && url !== "__default"){ // if the URL given is __default, we load the default content in the target element  
 				// we fill a string which will be the new location.hash
 				sHash += '!'+sTarget+'='+url+',';
 				if(!hash_found || hash_found !== url){
@@ -176,7 +176,7 @@ HUX.HashMgr = {
 					this.__load(target, url);
 				}
 				
-				delete this.__hashObj[sTarget]; // later, we will inject the default content in the remaining nodes
+				delete this.__hashObj[sTarget]; // later, we will inject the default content in the remaining elements
 			}
 			else if(url === "__default")
 				delete new_hashObj[sTarget];

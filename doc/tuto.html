@@ -3,17 +3,17 @@
 	<h1>Simple HUX Request</h1>
 	<p>As a first HUX request, you will do this : </p>
 	<ul>
-		<li><a href="resources/hello_world.html" data-hux-targetnode="HUXdiv1">Say Hello!</a></li>
+		<li><a href="resources/hello_world.html" data-hux-target="HUXdiv1">Say Hello!</a></li>
 		<li id="HUXdiv1">...</li>
 	</ul>
 	<p>To do that, you will need to make : </p>
 	<ul>
-		<li>a link with a <a href="javascript:alert('lien a mettre')">targetnode [lien ici]</a> attribute.</li>
+		<li>a link with a <a href="javascript:alert('lien a mettre')">target [lien ici]</a> attribute.</li>
 		<li>a target node with an id</li>
 	</ul>
-	<p>A target node is the node that will receive the content of the HTML content requested. The attribute <a href="javascript:alert('lien a mettre')">targetnode</a> 
+	<p>A target node is the node that will receive the content of the HTML content requested. The attribute <a href="javascript:alert('lien a mettre')">target</a> 
 		contains its id.
-		<br/>In other word, if you have the following target node : &lt;div id="myTN"&gt;&lt;div&gt;, you would need a link of this type : &lt;a href="/to/my/content.html" data-hux-targetnode="myTN"&gt;click me&lt;a&gt;
+		<br/>In other word, if you have the following target node : &lt;div id="myTN"&gt;&lt;div&gt;, you would need a link of this type : &lt;a href="/to/my/content.html" data-hux-target="myTN"&gt;click me&lt;a&gt;
 		<br/>So, by clicking on the link, the user will load content.html in the div element (named target node because it is the node that will receive the content)</p>
 	<p>TODO : exemple ici</p>
 	<p>Easy, wasn't it? Let's continue by playing with <a href="javascript:alert('lien manquant')">filling [lien ici]</a> attribute.</p>

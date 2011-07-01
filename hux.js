@@ -1095,10 +1095,12 @@ HUX.Core.addModule( HUX.ScriptInjecter );/**
 		init: function(){
 			var evName;
 			for(evName in this.classNames){
-				HUX.Core.HUXevents.bindGlobal(evName, function(ev){
-					hscm.setHuxClassName(ev.target, ev.type);
-				});
+				HUX.Core.HUXevents.bindGlobal(evName, hscm.eventHandler);
 			}
+		},
+ 
+		eventHandler: function(ev){
+			hscm.setHuxClassName(ev.target, ev.type);
 		},
 		setHuxClassName: function(el, key){
 			el.className = el.className.replace(/hux_[^ ]+/g, ""); // we erase any hux class name

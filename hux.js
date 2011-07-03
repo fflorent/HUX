@@ -506,7 +506,7 @@ HUX.Core = {
 	},
 	
 	// ensures that any element added by HUX would be listened
-	recursiveListen: function(jsNamespace){
+	addLiveListener: function(jsNamespace){
 		jsNamespace.listen(document.documentElement);
 		HUX.Core.HUXevents.bindGlobal("beforeInject", function(event){
 			HUX.Core.foreach(event.children, function(child){
@@ -598,7 +598,7 @@ HUX.SimpleLoader = {
 		HUX.Core.Selector.byAttributeHUX("a", this.sTarget, context, this.__fnEach);
 	},
 	init: function(){
-		HUX.Core.recursiveListen(this);
+		HUX.Core.addLiveListener(this);
 	}
 };
 
@@ -642,7 +642,7 @@ HUX.HashMgr = {
 		if(this.IFrameHack.enabled)
 			this.IFrameHack.createIFrame();
 		// we listen to any anchor beginning with "#!" (corresponding to CCS3 Selector : a[href^="#!"])
-		HUX.Core.recursiveListen(HUX.HashMgr);
+		HUX.Core.addLiveListener(HUX.HashMgr);
 		// we treat location.hash
 		HUX.HashMgr.handler(null, true);
 		HUX.Core.HUXevents.__arrEv["afterHashChanged"] = [];
@@ -880,13 +880,15 @@ HUX.Core.addModule(HUX.HashMgr);
   * To let Search Engines index websites.
   * 
   * To do so, instead of using this kind of Anchor Element : <a href="#!TARGET=URL">...</a>
-  * We permit to use this kind : <a href="FALLBACK_URL" data-hux-href="#!TARGET=URL">...</a>
+  * We permit to use this kind one : <a href="FALLBACK_URL" data-hux-href="#!TARGET=URL">...</a>
   */
  
 (function(hm, hc) {
 	// extend old function HUX.HashMgr.init to add some treatments before 
 	hm.init = hm.init.hux_wrap(function(origFn){
 		try{
+			// before calling the original HashMgr.init()
+			// we transpose HUX-prefixed href to non-prefixed href
 			var elts = hc.Selector.byAttributeHUX("a", "href", document);
 			hc.foreach(elts, function(el){
 				el.setAttribute("href", hc.HUXattr.getAttributeHUX(el, "href"));
@@ -926,9 +928,9 @@ HUX.Form = {
 	// if true, the form is reset after each submit
 	clearAfterSubmit: true,
 	init: function(){
-		HUX.Core.recursiveListen(HUX.Form);
+		HUX.Core.addLiveListener(HUX.Form);
 	},
-	// called by HUX.Core.recursiveListen
+	// called by HUX.Core.addLiveListener
 	listen: function(context){
 		HUX.Core.Selector.byAttributeHUX("form", "target", context, this.__fnEach);
 	},

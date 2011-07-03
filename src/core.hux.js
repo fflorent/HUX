@@ -32,7 +32,7 @@ HUX.Core = {
 	init: function(){
 		this.Selector.init();
 	},
-	namespace: "http://www.example.org/HUX",
+	namespace: "urn:hux:1.0",
 	/**
 	 * HUX specific event Manager 
 	 * Events :

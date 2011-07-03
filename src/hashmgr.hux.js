@@ -47,7 +47,7 @@ HUX.HashMgr = {
 		var fnFilter, fnEach = HUX.HashMgr.__callback_anchor, prefixedTN;
 		if(document.evaluate !== undefined){
 			prefixedTN = HUX.Core.Selector.prefixTagName("a");
-			HUX.Core.Selector.evaluate("//"+prefixedTN+"[starts-with(@href, '#!')]", context, fnEach);
+			HUX.Core.Selector.evaluate(".//"+prefixedTN+"[starts-with(@href, '#!')]", context, fnEach);
 		}
 		else{
 			fnFilter = function(){  return this.getAttribute("href").indexOf("#!") === 0;  };

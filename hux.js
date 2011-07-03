@@ -118,7 +118,10 @@ HUX.Core = {
 	// to log error properly
 	logError: function(ex){
 		if(typeof console !== "undefined"){
-			console.error(ex);
+			if(console.exception !== undefined)
+				console.exception.apply(console, arguments);
+			else if(console.error !== undefined)
+				console.error.apply(console, arguments);
 		}
 	},
 	/**
@@ -198,6 +201,8 @@ HUX.Core = {
 				// but allows create a div element in which we inject the HTML String of a TABLE
 				if(parent.tagName === "TABLE")
 					parent = this.htmltodom("<TABLE>"+sHtml+"</TABLE>", null)[0];
+				else
+					HUX.Core.logError(e);
 			}
 			return this.getChildren(parent);
 		}
@@ -265,7 +270,7 @@ HUX.Core = {
 			prefixedTN = this.prefixTagName(tagName);
 			if(typeof document.evaluate !== "undefined"){
 				sAttrXP = attrs.join(" or @"); // sAttrXP = "data-attr OR @data-hux-attr OR @hux:attr"
-				xpath = "//"+prefixedTN+"[@"+sAttrXP+"]";
+				xpath = ".//"+prefixedTN+"[@"+sAttrXP+"]";
 				return this.evaluate(xpath, context, fnEach);
 			}
 			else{
@@ -294,16 +299,16 @@ HUX.Core = {
 		 * 
 		 * evaluate(sXpath, context, fnEach)
 		 * 	sXpath : xpath String
-		 * 	context : the element where we will search for results (must have an id or be a documentElement; default : document)
+		 * 	context : the element where we will search for results
 		 * 	fnEach : the function executed for each results
 		 * 
-		 * See Also prefixTagName for convenience with elements tagnames
+		 * NOTES : 
+		 *  - if you use a context, your xpath expression may begin with a dot (example : ".//p" for selecting all paragraphs in the context)
+		 *  - See Also prefixTagName for convenience with the tagName of the elements
 		 */
 		evaluate:function(sXpath, context, fnEach){
 			context = context || document.documentElement;
 			fnEach = fnEach || function(){};
-			if(context.id)
-				sXpath = ("//*[@id='"+context.id+"']"+sXpath) ;
 			var results = document.evaluate(sXpath, context, this.__nsResolver, XPathResult.ANY_TYPE, null); 
 			var thisResult;
 			var ret = [];
@@ -576,7 +581,7 @@ HUX.SimpleLoader = {
 	/**
 	 * handler for Click Event
 	 */
-	__onclick: function(ev){
+	onclick: function(ev){
 		var srcElement = HUX.Core.Compat.getEventTarget(ev) ;
 		var opt = {
 			data:null,
@@ -590,12 +595,12 @@ HUX.SimpleLoader = {
 		HUX.Core.xhr(opt);
 		HUX.Core.Compat.preventDefault(ev);
 	},
-	__fnEach: function(el){
-		HUX.Core.Compat.addEventListener(el, "click", HUX.SimpleLoader.__onclick );
+	fnEach: function(el){
+		HUX.Core.Compat.addEventListener(el, "click", HUX.SimpleLoader.onclick );
 	},
 	listen:function(context){
 		// for all anchor elements having target attributes, we listen to "click" events
-		HUX.Core.Selector.byAttributeHUX("a", this.sTarget, context, this.__fnEach);
+		HUX.Core.Selector.byAttributeHUX("a", this.sTarget, context, this.fnEach);
 	},
 	init: function(){
 		HUX.Core.addLiveListener(this);
@@ -652,7 +657,7 @@ HUX.HashMgr = {
 		var fnFilter, fnEach = HUX.HashMgr.__callback_anchor, prefixedTN;
 		if(document.evaluate !== undefined){
 			prefixedTN = HUX.Core.Selector.prefixTagName("a");
-			HUX.Core.Selector.evaluate("//"+prefixedTN+"[starts-with(@href, '#!')]", context, fnEach);
+			HUX.Core.Selector.evaluate(".//"+prefixedTN+"[starts-with(@href, '#!')]", context, fnEach);
 		}
 		else{
 			fnFilter = function(){  return this.getAttribute("href").indexOf("#!") === 0;  };
@@ -1088,7 +1093,7 @@ HUX.Core.addModule( HUX.ScriptInjecter );/**
 (function(){
 	var hscm;
 	HUX.StageClassMgr = hscm = {
-		delayEnd:30,
+		delayEnd:30, // needed for transitions 
 		classNames:{
 			/* map : [event] : [className] */
 			"loading":"hux_loading",

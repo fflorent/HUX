@@ -23,7 +23,7 @@
 (function(){
 	var hscm;
 	HUX.StageClassMgr = hscm = {
-		delayEnd:30,
+		delayEnd:30, // needed for transitions 
 		classNames:{
 			/* map : [event] : [className] */
 			"loading":"hux_loading",

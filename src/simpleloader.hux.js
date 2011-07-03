@@ -29,7 +29,7 @@ HUX.SimpleLoader = {
 	/**
 	 * handler for Click Event
 	 */
-	__onclick: function(ev){
+	onclick: function(ev){
 		var srcElement = HUX.Core.Compat.getEventTarget(ev) ;
 		var opt = {
 			data:null,
@@ -43,12 +43,12 @@ HUX.SimpleLoader = {
 		HUX.Core.xhr(opt);
 		HUX.Core.Compat.preventDefault(ev);
 	},
-	__fnEach: function(el){
-		HUX.Core.Compat.addEventListener(el, "click", HUX.SimpleLoader.__onclick );
+	fnEach: function(el){
+		HUX.Core.Compat.addEventListener(el, "click", HUX.SimpleLoader.onclick );
 	},
 	listen:function(context){
 		// for all anchor elements having target attributes, we listen to "click" events
-		HUX.Core.Selector.byAttributeHUX("a", this.sTarget, context, this.__fnEach);
+		HUX.Core.Selector.byAttributeHUX("a", this.sTarget, context, this.fnEach);
 	},
 	init: function(){
 		HUX.Core.addLiveListener(this);

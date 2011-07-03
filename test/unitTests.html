@@ -1,5 +1,5 @@
  <!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
-<html xmlns="http://www.w3.org/1999/xhtml" xmlns:hux="urn:hux:1.0">
+<html xmlns="http://www.w3.org/1999/xhtml" xmlns:hux="http://www.example.org/HUX">
 	<head>
 		<title>Unit Tests</title>
 		<script type="text/javascript" src="../hux.js">
@@ -12,6 +12,7 @@
 		<meta http-equiv="Expires" content="0" />
 	</head>
 	<body>
+		
 		<script type="text/javascript">
 			//<![CDATA[
 			location.hash = "";
@@ -130,6 +131,11 @@
 			
 			var testSimpleLoader = function(){
 				module("SimpleLoader");
+				if(!HUX){
+					alert('hux not loaded');
+					return false;
+				}
+					
 				var a, div= $id("interfaceSL"), container = $id("containerSimpleLoader");
 				
 				HUX.Core.HUXevents.bind(container, "afterInject", function(){
@@ -177,10 +183,15 @@
 				a= div.getElementsByTagName("a")[0];
 				simulateClick(a);
 			};
-			
-			HUX.Core.Compat.addEventListener(window, "load", testSimpleLoader);
-			
-			
+			// a freak bug with IE force to use timeout after load ... 
+			// because HUX has not done its treatment ...
+			var timeout = 0;
+			if(window.attachEvent)
+				timeout = 500;
+			HUX.Core.Compat.addEventListener(window, "load", function(){
+				setTimeout(testSimpleLoader, timeout);
+			});
+			//setTimeout(testSimpleLoader, 1000);
 			
 			//]]>
 			</script>
@@ -195,25 +206,27 @@
 		<table id="containerForm" style="display:none">
 			
 		</table>
-		<div id="containerHM" style="display:none">
-		</div>
-		<div id="interfaceSL" style="display:none">
-			<a href='contents/content1.html' data-hux-target='containerSimpleLoader'>click</a>
-			<a href='contents/content2.html' data-target='containerSimpleLoader' data-hux-filling="prepend">click</a>
-			<a href='contents/content3.html' target='containerSimpleLoader' data-hux-filling="append">click</a>
-			<a href='contents/content1.html' data-hux-target='containerSimpleLoader' data-hux-filling="replace">click</a>
-			<a href='contents/content5.html' data-hux-target='containerSimpleLoader' data-hux-filling="replace">click</a>
-		</div>
-		<div id="interfaceForms" style="display:none">
-			<form id="formComment" action="CGI/comment.php" method="POST" data-hux-target="containerForm">
-				<input type="text" name="login" value="John Doe" />
-				<textarea name="comment">Where am I?</textarea>
-				<input type="submit" name="submit"/>
-			</form>
-		</div>
-		<div id="interfaceHM" style="display:none">
-			<a href='#!containerHM=contents/content1.html'>click</a>
-			<a href="#!containerHM=contents/content4.html">click</a>
+		<div style="">
+			<div id="containerHM" style="">
+			</div>
+			<div id="interfaceSL" style="">
+				<a href='contents/content1.html' data-hux-target='containerSimpleLoader'>click</a>
+				<a href='contents/content2.html' data-target='containerSimpleLoader' data-hux-filling="prepend">click</a>
+				<a href='contents/content3.html' target='containerSimpleLoader' data-hux-filling="append">click</a>
+				<a href='contents/content1.html' data-hux-target='containerSimpleLoader' data-hux-filling="replace">click</a>
+				<a href='contents/content5.html' data-hux-target='containerSimpleLoader' data-hux-filling="replace">click</a>
+			</div>
+			<div id="interfaceForms" style="">
+				<form id="formComment" action="CGI/comment.php" method="POST" data-hux-target="containerForm">
+					<input type="text" name="login" value="John Doe" />
+					<textarea name="comment">Where am I?</textarea>
+					<input type="submit" name="submit"/>
+				</form>
+			</div>
+			<div id="interfaceHM" style="">
+				<a href='#!containerHM=contents/content1.html'>click</a>
+				<a href="#!containerHM=contents/content4.html">click</a>
+			</div>
 		</div>
 	</body>
 </html>

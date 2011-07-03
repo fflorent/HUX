@@ -118,10 +118,14 @@ HUX.Core = {
 	// to log error properly
 	logError: function(ex){
 		if(typeof console !== "undefined"){
-			if(console.exception !== undefined)
+			if(console.exception !== undefined){
 				console.exception.apply(console, arguments);
-			else if(console.error !== undefined)
+			}
+			else if(console.error !== undefined){
 				console.error.apply(console, arguments);
+				if(ex.message) // IE
+					console.error(ex.message);
+			}
 		}
 	},
 	/**

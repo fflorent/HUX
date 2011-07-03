@@ -23,11 +23,12 @@
 (function(){
 	var hscm;
 	HUX.StageClassMgr = hscm = {
+		delayEnd:30,
 		classNames:{
 			/* map : [event] : [className] */
 			"loading":"hux_loading",
 			"requestError":"hux_error",
-			"beforeInject":"hux_beforeInject",
+			"beforeInject":"hux_initLoaded",
 			"afterInject":"hux_loaded"
 		},
 		init: function(){
@@ -36,14 +37,17 @@
 				HUX.Core.HUXevents.bindGlobal(evName, hscm.eventHandler);
 			}
 		},
- 
 		eventHandler: function(ev){
-			hscm.setHuxClassName(ev.target, ev.type);
+			var timeout = 0;
+			if(ev.type === "afterInject")
+				timeout = hscm.delayEnd;
+			setTimeout(hscm.setHuxClassName, timeout, ev.target, ev.type);
 		},
 		setHuxClassName: function(el, key){
-			el.className = el.className.replace(/hux_[^ ]+/g, ""); // we erase any hux class name
-			el.className += " "+hscm.classNames[key]; // we push the new className 
+			
+			el.className = hscm.classNames[key] + " " + el.className.replace(/hux_[^ ]+[ ]*/g, ""); // we push the new className and erase any old HUX class Name 
 		}
+
 	};
 	hscm.init(); // we launch the module directly
 })();

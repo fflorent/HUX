@@ -887,7 +887,8 @@ HUX.Core.addModule(HUX.HashMgr);
 	// extend old function HUX.HashMgr.init to add some treatments before 
 	hm.init = hm.init.hux_wrap(function(origFn){
 		try{
-			hc.Selector.byAttributeHUX("a", "href", document, function(el){
+			var elts = hc.Selector.byAttributeHUX("a", "href", document);
+			hc.foreach(elts, function(el){
 				el.setAttribute("href", hc.HUXattr.getAttributeHUX(el, "href"));
 			});
 		}
@@ -1085,11 +1086,12 @@ HUX.Core.addModule( HUX.ScriptInjecter );/**
 (function(){
 	var hscm;
 	HUX.StageClassMgr = hscm = {
+		delayEnd:30,
 		classNames:{
 			/* map : [event] : [className] */
 			"loading":"hux_loading",
 			"requestError":"hux_error",
-			"beforeInject":"hux_beforeInject",
+			"beforeInject":"hux_initLoaded",
 			"afterInject":"hux_loaded"
 		},
 		init: function(){
@@ -1098,14 +1100,17 @@ HUX.Core.addModule( HUX.ScriptInjecter );/**
 				HUX.Core.HUXevents.bindGlobal(evName, hscm.eventHandler);
 			}
 		},
- 
 		eventHandler: function(ev){
-			hscm.setHuxClassName(ev.target, ev.type);
+			var timeout = 0;
+			if(ev.type === "afterInject")
+				timeout = hscm.delayEnd;
+			setTimeout(hscm.setHuxClassName, timeout, ev.target, ev.type);
 		},
 		setHuxClassName: function(el, key){
-			el.className = el.className.replace(/hux_[^ ]+/g, ""); // we erase any hux class name
-			el.className += " "+hscm.classNames[key]; // we push the new className 
+			
+			el.className = hscm.classNames[key] + " " + el.className.replace(/hux_[^ ]+[ ]*/g, ""); // we push the new className and erase any old HUX class Name 
 		}
+
 	};
 	hscm.init(); // we launch the module directly
 })();

@@ -27,14 +27,17 @@
   * To let Search Engines index websites.
   * 
   * To do so, instead of using this kind of Anchor Element : <a href="#!TARGET=URL">...</a>
-  * We permit to use this kind : <a href="FALLBACK_URL" data-hux-href="#!TARGET=URL">...</a>
+  * We permit to use this kind one : <a href="FALLBACK_URL" data-hux-href="#!TARGET=URL">...</a>
   */
  
 (function(hm, hc) {
 	// extend old function HUX.HashMgr.init to add some treatments before 
 	hm.init = hm.init.hux_wrap(function(origFn){
 		try{
-			hc.Selector.byAttributeHUX("a", "href", document, function(el){
+			// before calling the original HashMgr.init()
+			// we transpose HUX-prefixed href to non-prefixed href
+			var elts = hc.Selector.byAttributeHUX("a", "href", document);
+			hc.foreach(elts, function(el){
 				el.setAttribute("href", hc.HUXattr.getAttributeHUX(el, "href"));
 			});
 		}

@@ -26,9 +26,9 @@ HUX.Form = {
 	// if true, the form is reset after each submit
 	clearAfterSubmit: true,
 	init: function(){
-		HUX.Core.registerListen(HUX.Form);
+		HUX.Core.recursiveListen(HUX.Form);
 	},
-	// called by HUX.Core.registerListen
+	// called by HUX.Core.recursiveListen
 	listen: function(context){
 		HUX.Core.Selector.byAttributeHUX("form", "target", context, this.__fnEach);
 	},

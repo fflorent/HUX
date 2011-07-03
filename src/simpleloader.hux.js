@@ -51,7 +51,7 @@ HUX.SimpleLoader = {
 		HUX.Core.Selector.byAttributeHUX("a", this.sTarget, context, this.__fnEach);
 	},
 	init: function(){
-		HUX.Core.registerListen(this);
+		HUX.Core.recursiveListen(this);
 	}
 };
 

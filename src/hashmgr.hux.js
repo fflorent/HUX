@@ -37,7 +37,7 @@ HUX.HashMgr = {
 		if(this.IFrameHack.enabled)
 			this.IFrameHack.createIFrame();
 		// we listen to any anchor beginning with "#!" (corresponding to CCS3 Selector : a[href^="#!"])
-		HUX.Core.registerListen(HUX.HashMgr);
+		HUX.Core.recursiveListen(HUX.HashMgr);
 		// we treat location.hash
 		HUX.HashMgr.handler(null, true);
 		HUX.Core.HUXevents.__arrEv["afterHashChanged"] = [];

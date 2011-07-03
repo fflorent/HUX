@@ -505,7 +505,7 @@ HUX.Core = {
 	},
 	
 	// ensures that any element added by HUX would be listened
-	registerListen: function(jsNamespace){
+	recursiveListen: function(jsNamespace){
 		jsNamespace.listen(document.documentElement);
 		HUX.Core.HUXevents.bindGlobal("beforeInject", function(event){
 			HUX.Core.foreach(event.children, function(child){

@@ -322,7 +322,7 @@ HUX.Core = {
 		 * This function is a fallback for Selector.byAttribute
 		 */
 		__byAttributeIE: function(tagName, attr, context, fnEach){
-			var fnFilter = function(){  return this.getAttribute(attr) !== null;  };
+			var fnFilter = function(){  return this.getAttribute(attr);  }; // NOTE : IE7 returns "" if the attribute does not exist
 			return this.filterIE(tagName, fnFilter, context, fnEach);
 		},
 		/**

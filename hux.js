@@ -323,7 +323,7 @@ HUX.Core = {
 		 * This function is a fallback for Selector.byAttribute
 		 */
 		__byAttributeIE: function(tagName, attr, context, fnEach){
-			var fnFilter = function(){  return this.getAttribute(attr) !== null;  };
+			var fnFilter = function(){  return this.getAttribute(attr);  }; // NOTE : IE7 returns "" if the attribute does not exist
 			return this.filterIE(tagName, fnFilter, context, fnEach);
 		},
 		/**
@@ -660,7 +660,11 @@ HUX.HashMgr = {
 			HUX.Core.Selector.evaluate(".//"+prefixedTN+"[starts-with(@href, '#!')]", context, fnEach);
 		}
 		else{
-			fnFilter = function(){  return this.getAttribute("href").indexOf("#!") === 0;  };
+			fnFilter = function(){  
+				// NOTE : this.getAttribute("href", 2) does not always work with IE 7, so we use this workaround to 
+				// test if the href attribute begins with "#!"
+				return this.href.indexOf( location.href.replace(/#(.*)/, "")+"#!" ) === 0;  
+			};
 			HUX.Core.Selector.filterIE("a", fnFilter, context, fnEach);
 		}
 	},
@@ -730,11 +734,11 @@ HUX.HashMgr = {
 	},
 	__last_timeStamp:0,
 	__callback_anchor: function(el){
-		HUX.Core.Compat.addEventListener(el, "click", HUX.HashMgr.__handle_click);
+		HUX.Core.Compat.addEventListener(el, "click", HUX.HashMgr.onclick);
 	},
-	__handle_click:function(ev){
+	onclick:function(ev){
 		var srcElement = HUX.Core.Compat.getEventTarget(ev);
-		location.hash += srcElement.getAttribute("href").replace(/^#/,",");
+		location.hash += ( srcElement.hash || srcElement.getAttribute("href") ).replace(/^#/,",");
 		HUX.Core.Compat.preventDefault(ev);
 	},
 	updateHashSilently: function(hash, keepPrevHash){
@@ -889,12 +893,12 @@ HUX.Core.addModule(HUX.HashMgr);
   */
  
 (function(hm, hc) {
-	// extend old function HUX.HashMgr.init to add some treatments before 
-	hm.init = hm.init.hux_wrap(function(origFn){
+	// extend old function HUX.HashMgr.listen to add some treatments before 
+	hm.listen = hm.listen.hux_wrap(function(origFn, context){
 		try{
-			// before calling the original HashMgr.init()
+			// before calling the original HashMgr.listen()
 			// we transpose HUX-prefixed href to non-prefixed href
-			var elts = hc.Selector.byAttributeHUX("a", "href", document);
+			var elts = hc.Selector.byAttributeHUX("a", "href", context); // get all anchors with the HUX prefixed href attribute
 			hc.foreach(elts, function(el){
 				el.setAttribute("href", hc.HUXattr.getAttributeHUX(el, "href"));
 			});
@@ -1000,6 +1004,8 @@ HUX.Core.addModule(HUX.Form);
     THE SOFTWARE.
 **/
 
+// scriptinjecter.hux.js
+
 
 
 HUX.ScriptInjecter = {
@@ -1091,6 +1097,8 @@ HUX.Core.addModule( HUX.ScriptInjecter );/**
     THE SOFTWARE.
 **/
 
+//stageclassmgr.hux.js
+
 (function(){
 	var hscm;
 	HUX.StageClassMgr = hscm = {
@@ -1112,7 +1120,11 @@ HUX.Core.addModule( HUX.ScriptInjecter );/**
 			var timeout = 0;
 			if(ev.type === "afterInject")
 				timeout = hscm.delayEnd;
-			setTimeout(hscm.setHuxClassName, timeout, ev.target, ev.type);
+			// NOTE : IE does not implement extra arguments for setTimeout, so we use an anonymous function 
+			// to send ev.target and ev.type
+			setTimeout(function(){
+				hscm.setHuxClassName(ev.target, ev.type);
+			}, timeout);
 		},
 		setHuxClassName: function(el, key){
 			

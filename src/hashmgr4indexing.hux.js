@@ -31,12 +31,12 @@
   */
  
 (function(hm, hc) {
-	// extend old function HUX.HashMgr.init to add some treatments before 
-	hm.init = hm.init.hux_wrap(function(origFn){
+	// extend old function HUX.HashMgr.listen to add some treatments before 
+	hm.listen = hm.listen.hux_wrap(function(origFn, context){
 		try{
-			// before calling the original HashMgr.init()
+			// before calling the original HashMgr.listen()
 			// we transpose HUX-prefixed href to non-prefixed href
-			var elts = hc.Selector.byAttributeHUX("a", "href", document);
+			var elts = hc.Selector.byAttributeHUX("a", "href", context); // get all anchors with the HUX prefixed href attribute
 			hc.foreach(elts, function(el){
 				el.setAttribute("href", hc.HUXattr.getAttributeHUX(el, "href"));
 			});

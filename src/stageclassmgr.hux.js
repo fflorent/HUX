@@ -20,6 +20,8 @@
     THE SOFTWARE.
 **/
 
+//stageclassmgr.hux.js
+
 (function(){
 	var hscm;
 	HUX.StageClassMgr = hscm = {
@@ -41,7 +43,11 @@
 			var timeout = 0;
 			if(ev.type === "afterInject")
 				timeout = hscm.delayEnd;
-			setTimeout(hscm.setHuxClassName, timeout, ev.target, ev.type);
+			// NOTE : IE does not implement extra arguments for setTimeout, so we use an anonymous function 
+			// to send ev.target and ev.type
+			setTimeout(function(){
+				hscm.setHuxClassName(ev.target, ev.type);
+			}, timeout);
 		},
 		setHuxClassName: function(el, key){
 			

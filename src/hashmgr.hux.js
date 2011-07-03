@@ -50,7 +50,11 @@ HUX.HashMgr = {
 			HUX.Core.Selector.evaluate(".//"+prefixedTN+"[starts-with(@href, '#!')]", context, fnEach);
 		}
 		else{
-			fnFilter = function(){  return this.getAttribute("href").indexOf("#!") === 0;  };
+			fnFilter = function(){  
+				// NOTE : this.getAttribute("href", 2) does not always work with IE 7, so we use this workaround to 
+				// test if the href attribute begins with "#!"
+				return this.href.indexOf( location.href.replace(/#(.*)/, "")+"#!" ) === 0;  
+			};
 			HUX.Core.Selector.filterIE("a", fnFilter, context, fnEach);
 		}
 	},
@@ -120,11 +124,11 @@ HUX.HashMgr = {
 	},
 	__last_timeStamp:0,
 	__callback_anchor: function(el){
-		HUX.Core.Compat.addEventListener(el, "click", HUX.HashMgr.__handle_click);
+		HUX.Core.Compat.addEventListener(el, "click", HUX.HashMgr.onclick);
 	},
-	__handle_click:function(ev){
+	onclick:function(ev){
 		var srcElement = HUX.Core.Compat.getEventTarget(ev);
-		location.hash += srcElement.getAttribute("href").replace(/^#/,",");
+		location.hash += ( srcElement.hash || srcElement.getAttribute("href") ).replace(/^#/,",");
 		HUX.Core.Compat.preventDefault(ev);
 	},
 	updateHashSilently: function(hash, keepPrevHash){

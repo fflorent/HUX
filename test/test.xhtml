@@ -2,12 +2,30 @@
 <!DOCTYPE html>
 <html
   xmlns="http://www.w3.org/1999/xhtml"
-  xmlns:hux="urn:hux:1.0">
+  xmlns:hux="http://www.example.org/HUX">
   <!--NOTE : doit etre d'extension .xhtml sauf pour IE -->
 	<head>
 		<meta charset="utf-8"/>
 		<title>TEST</title>
 		<script type="text/javascript" src="../hux.js"></script>
+		<style type="text/css">
+			#container2.hux_initLoaded {
+				-moz-transform:scale(0);
+				-webkit-transform:scale(0);
+				-o-transform:scale(0);
+				transform:scale(0);
+			}
+			#container2.hux_loaded {
+				-moz-transform:scale(1);
+				-webkit-transform:scale(1);
+				-o-transform:scale(1);
+				transform:scale(1);
+				-moz-transition-duration:3s;
+				-webkit-transition-duration:3s;
+				-o-transition-duration:3s;
+				transition-duration:3s;
+			}
+		</style>
 	</head>
 	<body>
 		<div id="container"></div>
@@ -15,5 +33,6 @@
 		<p>No URL Update : <a href="content.html" hux:target="container2">Click</a></p>
 		<p>Update URL : <a href="#!container=content.html" >Click</a></p>
 		<p>Replace container2 content : <a href="#!container2=content.html">URL update</a></p>
+		<p>data-hux-hash : <a href="content.html" data-hux-href="#!container=content.html">click here</a></p>
 	</body>
 </html>

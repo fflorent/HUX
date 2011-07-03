@@ -33,7 +33,7 @@ HUX.Core = {
 	init: function(){
 		this.Selector.init();
 	},
-	namespace: "http://www.example.org/HUX",
+	namespace: "urn:hux:1.0",
 	/**
 	 * HUX specific event Manager 
 	 * Events :
@@ -1010,11 +1010,12 @@ HUX.ScriptInjecter = {
 	},
 	searchScripts: function(ev){
 		var scripts = [];
+		var toArray = Array.prototype.slice;
 		HUX.Core.foreach(ev.children, function(child){
 			if(child.tagName === "SCRIPT")
 				scripts.push(child);
 			else if(child.nodeType === 1)
-				scripts.push.apply(scripts, child.getElementsByTagName("script") );
+				scripts.push.apply(scripts, toArray.call( child.getElementsByTagName("script") ) );
 		});
 		HUX.ScriptInjecter.exec.call(HUX.ScriptInjecter, scripts);
 	},

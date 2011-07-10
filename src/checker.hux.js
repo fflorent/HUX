@@ -1,5 +1,5 @@
 /**
-    HTTP by Using XML (HUX) : Syntax checker
+    HTTP Using XML (HUX) : Syntax checker
     Copyright (C) 2011  Florent FAYOLLE
 
     This program is free software: you can redistribute it and/or modify
@@ -23,27 +23,27 @@ HUX.Checker = {
 	},
 	
 	logError: function(strErr){
-		// we call HUX.Core.logError with a timeout in order to avoid to stop the rest of the execution
-		setTimeout(HUX.Core.logError, 0, strErr); 
+		// we call HUX.logError with a timeout in order to avoid to stop the rest of the execution
+		setTimeout(HUX.logError, 0, strErr); 
 	},
 	__get_targets: function(){
 		var targets = [];
 		// we get all id in href attributes : 
-		HUX.Core.Selector.byAttribute("a", "href", null, function(el){
+		HUX.Selector.byAttribute("a", "href", null, function(el){
 			var re = /!([^=]+)/g, res;
 			while( (res = re.exec(el.href)) !== null )
 				targets.push( res[1] );
 		});
 		// we get all target attributes
-		HUX.Core.Selector.byAttributeHUX("*", "target", null, function(el){
-			targets.push( HUX.Core.HUXattr.getAttributeHUX(el, "target") );
+		HUX.Selector.byAttributeHUX("*", "target", null, function(el){
+			targets.push( HUX.HUXattr.getAttributeHUX(el, "target") );
 		});
 		return targets;
 	},
 	/* check the id of target attributes and the id given in href attributes */
 	check_targets: function(){
 		var targets = this.__get_targets();
-		HUX.Core.foreach(targets, function(targ){
+		HUX.foreach(targets, function(targ){
 			if( document.getElementById(targ) === null){
 				this.logError("No Element of id=\""+targ+"\" found");
 			}
@@ -51,6 +51,6 @@ HUX.Checker = {
 	}
 	
 };
-HUX.Core.addModule( HUX.Checker );
+HUX.addModule( HUX.Checker );
 
 

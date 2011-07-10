@@ -1,5 +1,5 @@
  /**
-    HTTP by Using XML (HUX) : Form Manager
+    HTTP Using XML (HUX) : Form Manager
     Copyright (C) 2011  Florent FAYOLLE
     
     Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -20,22 +20,53 @@
     THE SOFTWARE.
 **/
  //form.hux.js
-
+/**
+ * Namespace: HUX.Form
+ * Form submission manager for HUX
+ */
 HUX.Form = {
-	defaultFilling: HUX.Core.Inject.sMethods.APPEND,
-	// if true, the form is reset after each submit
+	/**
+	 * Variable: defaultFilling
+	 * {String} the default filling method for forms
+	 * 
+	 * Default: "append"
+	 */
+	defaultFilling: HUX.Inject.sMethods.APPEND,
+	/**
+	 * Variable: clearAfterSubmit
+	 * {Boolean} if true, the form is cleared after being submitted
+	 * 
+	 * Default: true
+	 */
 	clearAfterSubmit: true,
+	/**
+	 * Function: init
+	 * inits the module. Calls addLiveListener.
+	 * 
+	 */
 	init: function(){
-		HUX.Core.addLiveListener(HUX.Form);
+		HUX.addLiveListener(HUX.Form);
 	},
-	// called by HUX.Core.addLiveListener
+	/**
+	 * Function: listen
+	 * called by addLiveListener. For all forms having the "target" attribute, listens to submit events.
+	 */
 	listen: function(context){
-		HUX.Core.Selector.byAttributeHUX("form", "target", context, this.__fnEach);
+		HUX.Selector.byAttributeHUX("form", "target", context, function(el){
+			HUX.Compat.addEventListener(el, "submit", HUX.Form.onSubmit );
+		});
 	},
-	__fnEach: function(el){
-		HUX.Core.Compat.addEventListener(el, "submit", HUX.Form.onSubmit );
-	},
-
+	/**
+	 * Function: serialize
+	 * serializes the form data to URLEncode format.
+	 * 
+	 * Parameters:
+	 * 	- *el* : {Element} the form Element whose data will be serialized
+	 * 	- *arrData* : {Array of String} empty array that will be filled of Strings of this type : "[name]=[value]"
+	 * 
+	 * Used in:
+	 * 	- <onSubmit>
+	 */
 	serialize: function(el, arrData){
 		// TODO: explain the condition below : 
 		if( !el.disabled && 
@@ -46,28 +77,37 @@ HUX.Form = {
 					el.value = "";
 		}
 	},
+	/**
+	 * Function: onSubmit
+	 * handles the form submission
+	 * 
+	 * Parameters:
+	 * 	- *ev*: {DOM Event Object}
+	 */
 	onSubmit: function(ev){
-		var arrData = [], form = HUX.Core.Compat.getEventTarget(ev);
-		
+		var arrData = [], form = HUX.Compat.getEventTarget(ev);
+		// we fill the option object
 		var opt = {
 			data:null, // set below
 			url:form.action,
 			method:form.getAttribute("method"),
 			async:true,
-			filling:HUX.Core.HUXattr.getFillingMethod(form) || HUX.Form.defaultFilling,
-			target:HUX.Core.HUXattr.getTarget(form),
+			filling:HUX.HUXattr.getFillingMethod(form) || HUX.Form.defaultFilling,
+			target:HUX.HUXattr.getTarget(form),
 			srcElement:form
 		};
 		// we fill arrData : 
-		HUX.Core.Selector.byAttribute("*", "name", form, function(el){
+		HUX.Selector.byAttribute("*", "name", form, function(el){
 			HUX.Form.serialize(el, arrData);
 		});
+		// we join the data array to have this form : "name1=value1&name2=value2&...."
 		opt.data = arrData.join("&"); // 
-		HUX.Core.xhr(opt);
-		HUX.Core.Compat.preventDefault(ev);
+		// we call the XHR method
+		HUX.xhr(opt);
+		HUX.Compat.preventDefault(ev);
 	}
-};
-HUX.Core.addModule(HUX.Form);
+}; 
+HUX.addModule(HUX.Form);
 
 
 

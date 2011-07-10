@@ -1,5 +1,5 @@
 /**
-    HTTP by Using XML (HUX) : Hash Manager
+    HTTP Using XML (HUX) : Hash Manager
     Copyright (C) 2011  Florent FAYOLLE
     
     Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -21,61 +21,164 @@
 **/
 
 //hashmgr.hux.js
+
+
+/**
+ * Namespace: HUX.HashMgr
+ * Manages Hash for HUX
+ */
 HUX.HashMgr = {
-	// do we use asynchronous requests
+	// =============================
+	// PRIVATE PROPERTIES
+	// =============================
+	
+	/**
+	 * PrivateProperty: __hashObj
+	 * {HashMap<String, String>} Split object of the current Hash. Matches each id with the URL of the content loaded.
+	 */
+	__hashObj:{},
+	// the previous hash (private)
+	__prev_hash:location.hash,
+	// counter for exceptions
+	__watcher_cpt_ex:0,
+	
+	// store the content by default (before having injected content with HUX)
+	__default_content:{},
+	
+
+	
+	// =============================
+	// PUBLIC PROPERTIES
+	// =============================
+	
+	/**
+	 * Property: asyncReq
+	 * {boolean} true if the requests have to be asynchronous, false otherwise (default: false)
+	 */
 	asyncReq: false,
 	// does the browser support [on]hashchange event ?
 	hashchangeEnabled: null,
+	/**
+	 * Property: inTreatment
+	 * sort of mutex for event handlers
+	 */
+	inTreatment: false, 
 	
-	inTreatment: false, // sort of mutex
+	// limit of exceptions before stopping
+	watcher_cpt_limit:10,
+	/**
+	 * Property: timer
+	 * {Integer} Timer for browsers which do not support hashchange event. Used in <__watch>.
+	 */
+	timer:100,
+	
+	
+	
+	
+	// =============================
+	// PRIVATE FUNCTIONS
+	// =============================
+	
+	
+	/**
+	 * PrivateFunction: __watch
+	 * watcher for browsers which don't implement [on]hashchange event
+	 */
+	__watch: function(){
+		try{
+			HUX.HashMgr.handleIfChangement();
+		}
+		catch(ex){
+			HUX.logError(ex);
+			HUX.HashMgr.__watcher_cpt_ex++;
+			throw ex;
+		}
+		finally{
+			if(HUX.HashMgr.__watcher_cpt_ex < HUX.HashMgr.watcher_cpt_limit)
+				window.setTimeout(HUX.HashMgr.__watch, HUX.HashMgr.timer);
+		}
+	},
+	
+	
+	/**
+	 * PrivateFunction: __hashStringToObject
+	 * creates the Object for hash
+	 * 
+	 * Parameters:
+	 * 	- *hash*: {String} the location hash to convert
+	 * 
+	 * Returns: 
+	 * 	- the object of this type : {"[sTarget]":"[url]", ...}
+	 */
+	__hashStringToObject: function(hash){
+		var new_hashObj = {};
+		var pattern = new RegExp("[#,]!([^=,]+)=([^=,]+)", "g");
+		
+		while( ( resExec = (pattern.exec(hash)) ) !== null){
+			sTarget = resExec[1];
+			url = resExec[2];
+			new_hashObj[sTarget] = url;
+		}
+		return new_hashObj;
+	},
+	
+	
+	// =============================
+	// PUBLIC FUNCTIONS
+	// =============================
+	
+	
+	/**
+	 * Function: init
+	 * inits the module. 
+	 */
 	init:function(){
 		this.hashchangeEnabled = ( "onhashchange" in window) && (! document.documentMode || document.documentMode >= 8);
 		if( this.hashchangeEnabled )
-			this.mgrListener('add');
+			HUX.Compat.addEventListener(window, "hashchange", HUX.HashMgr.handleIfChangement);
 		else
 			this.__watch();
 		if(this.IFrameHack.enabled)
 			this.IFrameHack.createIFrame();
 		// we listen to any anchor beginning with "#!" (corresponding to CCS3 Selector : a[href^="#!"])
-		HUX.Core.addLiveListener(HUX.HashMgr);
+		HUX.addLiveListener(HUX.HashMgr);
 		// we treat location.hash
 		HUX.HashMgr.handler(null, true);
-		HUX.Core.HUXevents.__arrEv["afterHashChanged"] = [];
+		HUX.HUXEvents.createEventType("afterHashChanged");
 	},
-	
+	/**
+	 * Function: listen
+	 * Binds all anchor elements having an href beginning with "#!"
+	 * 
+	 * Parameters:
+	 * 	- *context*: {Element} the context where we listen for events
+	 */
 	listen: function(context){
-		var fnFilter, fnEach = HUX.HashMgr.__callback_anchor, prefixedTN;
+		var fnFilter, prefixedTN, fnEach;
+		fnEach = function(el){
+			HUX.Compat.addEventListener(el, "click", HUX.HashMgr.onClick);
+		};
 		if(document.evaluate !== undefined){
-			prefixedTN = HUX.Core.Selector.prefixTagName("a");
-			HUX.Core.Selector.evaluate(".//"+prefixedTN+"[starts-with(@href, '#!')]", context, fnEach);
+			prefixedTN = HUX.Selector.prefixTagName("a");
+			HUX.Selector.evaluate(".//"+prefixedTN+"[starts-with(@href, '#!')]", context, fnEach);
 		}
 		else{
-			fnFilter = function(){  
-				// NOTE : this.getAttribute("href", 2) does not always work with IE 7, so we use this workaround to 
+			fnFilter = function(el){  
+				// NOTE : el.getAttribute("href", 2) does not always work with IE 7, so we use this workaround to 
 				// test if the href attribute begins with "#!"
-				return this.href.indexOf( location.href.replace(/#(.*)/, "")+"#!" ) === 0;  
+				return el.href.indexOf( location.href.replace(/#(.*)/, "")+"#!" ) === 0;  
 			};
-			HUX.Core.Selector.filterIE("a", fnFilter, context, fnEach);
+			HUX.Selector.filterIE("a", fnFilter, context, fnEach);
 		}
 	},
-	mgrListener: function(sAction){
-		switch(sAction){
-			case 'add':
-			case 'remove':
-				if(HUX.HashMgr.hashchangeEnabled){
-					var sFn = sAction+'EventListener'; // sFn = addEventListener or removeEventListener
-					HUX.Core.Compat[sFn](window, "hashchange", HUX.HashMgr.handleIfChangement);
-				}
-				break;
-			default:
-				throw new TypeError("mgrListener : no action available for : "+sAction);
-		}
-	},
-	__prev_hash:location.hash,
-	__watcher_cpt_ex:0,
-	watcher_cpt_limit:10,
-	timer:100,
-	// handle each time the hash has changed
+	
+	/*
+	 * Function: handleIfChangement
+	 * handles the hash changement
+	 * 
+	 * Parameters:
+	 * 	- *ev*: {DOM Event}
+	 */
 	handleIfChangement: function(ev){
 		//info.push("enter");
 		var hash = location.hash;
@@ -88,30 +191,20 @@ HUX.HashMgr = {
 			finally{
 				HUX.HashMgr.__prev_hash = location.hash;
 				HUX.HashMgr.inTreatment = false;
-				HUX.Core.HUXevents.trigger("afterHashChanged", {"new_hash":HUX.HashMgr.__prev_hash});
+				HUX.HUXEvents.trigger("afterHashChanged", {"new_hash":HUX.HashMgr.__prev_hash});
 			}
 		}
 	},
-	// watcher for browsers which don't implement [on]hashchange event
-	__watch: function(){
-		try{
-			HUX.HashMgr.handleIfChangement();
-		}
-		catch(ex){
-			HUX.Core.logError(ex);
-			HUX.HashMgr.__watcher_cpt_ex++;
-			throw ex;
-		}
-		finally{
-			if(HUX.HashMgr.__watcher_cpt_ex < HUX.HashMgr.watcher_cpt_limit)
-				window.setTimeout(HUX.HashMgr.__watch, HUX.HashMgr.timer);
-		}
-	},
-	// Map id<=>url, extracted from location.hash
-	__hashObj:{},
-	// store the content by default (before having injected content with HUX)
-	__default_content:{},
-	__load: function(target, url){
+
+	/**
+	 * Function: load
+	 * loads the content (specified through its URL) to the target element.
+	 * 
+	 * Parameters:
+	 * 	- *target*: {Element} the target element in which we will load the remote content
+	 * 	- *url*: {String} the URL of the remote content
+	 */
+	load: function(target, url){
 		var opt = {
 			data:null,
 			url:url,
@@ -120,17 +213,29 @@ HUX.HashMgr = {
 			filling:null, // use default option (replace)
 			target:target
 		};
-		HUX.Core.xhr(opt);
+		HUX.xhr(opt);
 	},
-	__last_timeStamp:0,
-	__callback_anchor: function(el){
-		HUX.Core.Compat.addEventListener(el, "click", HUX.HashMgr.onclick);
-	},
-	onclick:function(ev){
-		var srcElement = HUX.Core.Compat.getEventTarget(ev);
+	/**
+	 * Funtion: onClick
+	 * handles click event on anchors having href="#!...". 
+	 * Instead of replacing the hash, adds the href content in the hash.
+	 * 
+	 * Parameters:
+	 * 	- *ev* : {DOM Event}
+	 */
+	onClick:function(ev){
+		var srcElement = HUX.Compat.getEventTarget(ev);
 		location.hash += ( srcElement.hash || srcElement.getAttribute("href") ).replace(/^#/,",");
-		HUX.Core.Compat.preventDefault(ev);
+		HUX.Compat.preventDefault(ev);
 	},
+	/**
+	 * Function: updateHashSilently
+	 * update the hash silently, i.e. without triggering hashchange event
+	 * 
+	 * Parameters:
+	 * 	- *hash*: {String} the new hash to set 
+	 * 	- *keepPrevHash*: {Boolean} true if we correct the current URL (default: false)
+	 */
 	updateHashSilently: function(hash, keepPrevHash){
 		if( hash.replace(/^#/, "") !== location.hash.replace(/^#/, "") ){
 			
@@ -142,25 +247,20 @@ HUX.HashMgr = {
 				// we "cancel" the previous location.hash which may be incorrect
 				if(!keepPrevHash){ // keepPrevHash === true when called by init()
 					history.back();
-					//info.push("back()");
 				}
 				location.hash = hash;
 			}
 		}
 		
 	},
-	// creates the Object for hash : {"[sTarget]":"[url]", ...}
-	__hashStringToObject: function(hash){
-		var new_hashObj = {};
-		var pattern = new RegExp("[#,]!([^=,]+)=([^=,]+)", "g");
-		
-		while( ( resExec = (pattern.exec(hash)) ) !== null){
-			sTarget = resExec[1];
-			url = resExec[2];
-			new_hashObj[sTarget] = url;
-		}
-		return new_hashObj;
-	},
+	/**
+	 * Function: handler
+	 * handles the hash modification
+	 * 
+	 * Parameters:
+	 * 	- *ev* : {DOM Event} event object for hashchange event. Can be null
+	 * 	- *keepPrevHash*: {Boolean} set to true if used by init, false otherwise.
+	 */
 	handler: function(ev, keepPrevHash){
 		var hash = location.hash.toString();
 		var resExec, sTarget, target, url, hash_found, sHash = "#";
@@ -177,7 +277,7 @@ HUX.HashMgr = {
 					if(!hash_found){
 						this.__default_content[sTarget] = target.cloneNode(true);
 					}
-					this.__load(target, url);
+					this.load(target, url);
 				}
 				
 				delete this.__hashObj[sTarget]; // later, we will inject the default content in the remaining elements
@@ -206,13 +306,18 @@ HUX.HashMgr = {
 	},*/
 	
 	/* 
+	 * namespace: HUX.HashMgr.IFrameHack
 	 * hack for browsers from which we cannot use previous or next button (for history) to go to the previous hash
 	 */
 	IFrameHack: {
 		/* this hack is only enabled for MSIE 1-7 */
+		/**
+		 * Variable: enabled
+		 * {boolean} if true, this hack is enabled. Only enable for MSIE 1->7
+		 */
 		enabled: navigator.userAgent.search(/MSIE [1-7]\./) > 0 || ( "documentMode" in document && document.documentMode < 8 ), 
 		iframe:null,
-		id:"HUXIFrameHack",
+		id:"HUXIFrameHack", // the id of the iframe
 		tmpDisableUpd: false, // we need to disable temporary the IFrame update 
 		// creates an iframe if the lasts does not exists, and if the Iframe Hack is enabled
 		__createIFrame: function(){
@@ -222,9 +327,17 @@ HUX.HashMgr = {
 			this.iframe.style.display = "none";
 			document.body.appendChild(this.iframe);
 		},
+		/**
+		 * Function: createIFrame
+		 * creates the Iframe
+		 */
 		createIFrame: function(){
 			return HUX.HashMgr.IFrameHack.__createIFrame.apply(HUX.HashMgr.IFrameHack, arguments);
 		},
+		/**
+		 * Function: updateIframe
+		 * update the content of the Iframe
+		 */
 		updateIFrame: function(){
 			if(this.enabled){
 				if(!this.tmpDisableUpd){
@@ -238,6 +351,10 @@ HUX.HashMgr = {
 			}
 			
 		},
+		/**
+		 * Function: setHash
+		 * modifies the hash
+		 */
 		setHash: function(hash){
 			if(hash !== location.hash){
 				this.tmpDisableUpd = true;
@@ -247,6 +364,6 @@ HUX.HashMgr = {
 	}
 };
 
-HUX.Core.addModule(HUX.HashMgr);
+HUX.addModule(HUX.HashMgr);
 
 

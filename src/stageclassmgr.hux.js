@@ -1,5 +1,5 @@
 /**
-    HTTP by Using XML (HUX) : Stage Class Manager
+    HTTP Using XML (HUX) : Stage Class Manager
     Copyright (C) 2011  Florent FAYOLLE
     
     Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -23,9 +23,18 @@
 //stageclassmgr.hux.js
 
 (function(){
-	var hscm;
+	var hscm ;// alias, stands for Hux Stage Class Manager
+	
+	/**
+	 * Namespace: HUX.StageClassMgr
+	 * changes the class of the target at each stage of the load
+	 */
 	HUX.StageClassMgr = hscm = {
 		delayEnd:30, // needed for transitions 
+		/**
+		 * Property: classNames
+		 * {HashMap<String, String>} gives a class name for each HUX event
+		 */
 		classNames:{
 			/* map : [event] : [className] */
 			"loading":"hux_loading",
@@ -33,12 +42,24 @@
 			"beforeInject":"hux_initLoaded",
 			"afterInject":"hux_loaded"
 		},
+		/**
+		 * Function: init
+		 * inits the module
+		 */
 		init: function(){
 			var evName;
 			for(evName in this.classNames){
-				HUX.Core.HUXevents.bindGlobal(evName, hscm.eventHandler);
+				HUX.HUXEvents.bindGlobal(evName, hscm.eventHandler);
 			}
 		},
+		/**
+		 * Function: eventHandler
+		 * handles any event given in classNames.
+		 * calls setHuxClassName to modify the class name of the target
+		 * 
+		 * Parameters : 
+		 * 	- *ev* : {HUX Event Object}
+		 */
 		eventHandler: function(ev){
 			var timeout = 0;
 			if(ev.type === "afterInject")
@@ -49,11 +70,17 @@
 				hscm.setHuxClassName(ev.target, ev.type);
 			}, timeout);
 		},
+		/**
+		 * Function: setHuxClassName
+		 * modifies the class name of a target. Removes any class names previously added by this function.
+		 * 
+		 * Parameters :
+		 * 	- *el* : {Element} the target element
+		 * 	- *key* : {String} the event name. 
+		 */
 		setHuxClassName: function(el, key){
-			
 			el.className = hscm.classNames[key] + " " + el.className.replace(/hux_[^ ]+[ ]*/g, ""); // we push the new className and erase any old HUX class Name 
 		}
-
 	};
 	hscm.init(); // we launch the module directly
 })();

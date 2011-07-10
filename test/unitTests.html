@@ -1,5 +1,5 @@
  <!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
-<html xmlns="http://www.w3.org/1999/xhtml" xmlns:hux="http://www.example.org/HUX">
+<html xmlns="http://www.w3.org/1999/xhtml" xmlns:hux="urn:hux:1.0">
 	<head>
 		<title>Unit Tests</title>
 		<script type="text/javascript" src="../hux.js">
@@ -99,14 +99,16 @@
 				"HM": [
 					function(container){
 						test("first injection", function(){
-							equal(location.hash, $id("interfaceHM").getElementsByTagName("a")[0].getAttribute("href"));
+							var a = $id("interfaceHM").getElementsByTagName("a")[0];
+							equal(location.hash, ( a.hash || a.getAttribute("href") ));
 							equal(container.children.length, 1);
 							equal(container.children[0].className, "content1");
 						});
 					},
 					function(container){
 						test("second injection", function(){
-							equal(location.hash, $id("interfaceHM").getElementsByTagName("a")[1].getAttribute("href"));
+							var a = $id("interfaceHM").getElementsByTagName("a")[1];
+							equal(location.hash, ( a.hash || a.getAttribute("href") ));
 							equal(container.children.length, 1);
 							equal(container.children[0].className, "content4");
 							// move the loaded anchor element to #interfaceHM, to let the runner simulate click on it
@@ -138,7 +140,7 @@
 					
 				var a, div= $id("interfaceSL"), container = $id("containerSimpleLoader");
 				
-				HUX.Core.HUXevents.bind(container, "afterInject", function(){
+				HUX.HUXEvents.bind(container, "afterInject", function(){
 					arrFnCheck.SL.shift().call(this, container);
 					do{ 
 						a = a.nextSibling;
@@ -155,7 +157,7 @@
 			var testForms = function(){
 				module("Forms");
 				var form, div= $id("interfaceForms"), container = $id("containerForm");
-				HUX.Core.HUXevents.bind(container, "afterInject", function(){
+				HUX.HUXEvents.bind(container, "afterInject", function(){
 					arrFnCheck.Form.shift().call(this, container);
 					do{ 
 						form = form.nextSibling;
@@ -172,7 +174,7 @@
 			var testHM = function(){
 				module("Hash Manager");
 				var a, div = $id("interfaceHM"), container = $id("containerHM");
-				HUX.Core.HUXevents.bindGlobal("afterHashChanged", function(){
+				HUX.HUXEvents.bindGlobal("afterHashChanged", function(){
 					arrFnCheck.HM.shift().call(this, container);
 					do{
 						a = a.nextSibling;
@@ -188,7 +190,7 @@
 			var timeout = 0;
 			if(window.attachEvent)
 				timeout = 500;
-			HUX.Core.Compat.addEventListener(window, "load", function(){
+			HUX.Compat.addEventListener(window, "load", function(){
 				setTimeout(testSimpleLoader, timeout);
 			});
 			//setTimeout(testSimpleLoader, 1000);
@@ -212,7 +214,7 @@
 			<div id="interfaceSL" style="">
 				<a href='contents/content1.html' data-hux-target='containerSimpleLoader'>click</a>
 				<a href='contents/content2.html' data-target='containerSimpleLoader' data-hux-filling="prepend">click</a>
-				<a href='contents/content3.html' target='containerSimpleLoader' data-hux-filling="append">click</a>
+				<a href='contents/content3.html' data-target='containerSimpleLoader' data-hux-filling="append">click</a>
 				<a href='contents/content1.html' data-hux-target='containerSimpleLoader' data-hux-filling="replace">click</a>
 				<a href='contents/content5.html' data-hux-target='containerSimpleLoader' data-hux-filling="replace">click</a>
 			</div>

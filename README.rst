@@ -74,7 +74,7 @@ For now, there is three possible applications with HUX :
  
 1- Links without URL update
 ---------------------------
-Note: The attributes which are relative to HUX are prefixed with *data\-hux\-*. It is the advised prefix (it avoids possible conflicts with other Frameworks and is HTML5 valid), but you can also use the following prefixes : *data-* (HTML5 valid), *hux:* (XHTML only, avoids conflicts, but doesn't pass the W3C validator), and no prefix (doesn't pass the W3C validator).
+Note: The attributes which are relative to HUX are prefixed with *data\-hux\-*. It is the advised prefix (it avoids possible conflicts with other Frameworks and is HTML5 valid), but you can also use the following prefixes : *data-* (HTML5 valid) and *hux:* (XHTML only, avoids conflicts, but doesn't pass the W3C validator).
 
 For that, you have at your disposal 3 attributes : 
  - href: the link to the content to load
@@ -129,7 +129,7 @@ Example :
 ::
 
 	<div id="comments"></div>
-	<form hux:target="comments" action="/path/to/cgi_treatment" method="POST">
+	<form data-hux-target="comments" action="/path/to/cgi_treatment" method="POST">
 	  <p>login :<br/><input type="text" name="login" /></p>
 	  <p>Comment : <br/><textarea name="comment" id="comment_content" ></textarea></p>
 	</form>

@@ -1,5 +1,5 @@
 /**
-    HTTP by Using XML (HUX) : Simple Loader
+    HTTP Using XML (HUX) : Simple Loader
     Copyright (C) 2011  Florent FAYOLLE
     
     Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -23,36 +23,56 @@
 
 //simpleloader.hux.js
 
-
+/**
+ * Namespace: HUX.SimpleLoader
+ * Loads content without URL update
+ */
 HUX.SimpleLoader = {
 	sTarget:"target",
 	/**
+	 * Function: onClick
 	 * handler for Click Event
 	 */
 	onclick: function(ev){
-		var srcElement = HUX.Core.Compat.getEventTarget(ev) ;
-		var opt = {
-			data:null,
-			url:srcElement.href,
-			method:'get',
-			async:true,
-			filling:HUX.Core.HUXattr.getFillingMethod(srcElement),
-			target:HUX.Core.HUXattr.getTarget(srcElement),
-			srcElement:srcElement
-		};
-		HUX.Core.xhr(opt);
-		HUX.Core.Compat.preventDefault(ev);
+		try{
+			var srcElement = HUX.Compat.getEventTarget(ev) ;
+			var opt = {
+				data:null,
+				url:srcElement.href,
+				method:'get',
+				async:true,
+				filling:HUX.HUXattr.getFillingMethod(srcElement),
+				target:HUX.HUXattr.getTarget(srcElement),
+				srcElement:srcElement
+			};
+			HUX.xhr(opt);
+			HUX.Compat.preventDefault(ev);
+		}
+		catch(ex){
+			HUX.logError(ex);
+		}
 	},
 	fnEach: function(el){
-		HUX.Core.Compat.addEventListener(el, "click", HUX.SimpleLoader.onclick );
+		HUX.Compat.addEventListener(el, "click", HUX.SimpleLoader.onclick );
 	},
+	/**
+	 * Function: listen
+	 * binds "click" event to HUX.SimpleLoader.onClick function for each anchors having target attribute
+	 * 
+	 * Parameters : 
+	 * 	- *context* : {Element} the context where we listen for events
+	 */
 	listen:function(context){
 		// for all anchor elements having target attributes, we listen to "click" events
-		HUX.Core.Selector.byAttributeHUX("a", this.sTarget, context, this.fnEach);
+		HUX.Selector.byAttributeHUX("a", this.sTarget, context, this.fnEach);
 	},
+	/**
+	 * Function: init
+	 * inits the module. Calls addLiveListener
+	 */
 	init: function(){
-		HUX.Core.addLiveListener(this);
+		HUX.addLiveListener(this);
 	}
 };
 
-HUX.Core.addModule(HUX.SimpleLoader); 
+HUX.addModule(HUX.SimpleLoader); 

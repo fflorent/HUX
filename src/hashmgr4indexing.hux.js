@@ -1,7 +1,7 @@
  // depends on HashMgr (hashmgr.hux.js)
  
  /**
-    HTTP by Using XML (HUX) : Hash Manager
+    HTTP Using XML (HUX) : Hash Manager
     Copyright (C) 2011  Florent FAYOLLE
     
     Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -47,4 +47,4 @@
 		}
 	});
 	
-})(HUX.HashMgr, HUX.Core);
+})(HUX.HashMgr, HUX);

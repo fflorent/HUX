@@ -106,7 +106,8 @@ var HUX = {
 		mod.listen(document);
 		HUX.HUXEvents.bindGlobal("beforeInject", function(event){
 			HUX.foreach(event.children, function(child){
-				mod.listen(child); 
+				if(child.nodeType === 1)  // is child an Element ?
+					mod.listen(child); 
 			});
 		});
 	},
@@ -184,12 +185,13 @@ var HUX = {
 	HUXEvents:{
 		// array of listener for each event
 		__arrEv:{
-			"beforeInject":{},
-			"beforeEmpty":{},
-			"requestError":{},
-			"afterInject":{},
-			"loading":{}
+			"beforeInject":{"global":[]}, 
+			"beforeEmpty":{"global":[]},
+			"requestError":{"global":[]},
+			"afterInject":{"global":[]},
+			"loading":{"global":[]}
 		},
+
 		__addListener: function(key, evName, fn){
 			var arrEv = this.__arrEv;
 			if(arrEv[evName]){
@@ -202,6 +204,12 @@ var HUX = {
 		},
 		__removeListener: function(key, evName, fn){
 			HUX.removeElement(this.__arrEv[evName][key], fn);
+		},
+		// get the listeners of an event safely
+		__getListeners: function(evName, tid){
+			var lis = this.__arrEv[ evName ];
+			// if this.__arrEv[ evName ][ tid ] does not exist, we return an empty array
+			return ( lis && tid in lis ) ? lis[ tid ] : [];
 		},
 		/**
 		 * Function: bindGlobal
@@ -271,8 +279,8 @@ var HUX = {
 				var lsters = [], tid = (event.target?event.target.id : null), arrEv = this.__arrEv;
 				// we merge the listeners for the specific element and the listeners for "global"
 				if(tid)
-					lsters = lsters.concat( arrEv[evName][tid] || [] );
-				lsters = lsters.concat( arrEv[evName]["global"] || [] );
+					lsters = lsters.concat( this.__getListeners(evName, tid) );
+				lsters = lsters.concat( this.__getListeners(evName, "global") );
 				
 				event.type = evName;
 				HUX.foreach(lsters, function(fn){
@@ -296,10 +304,12 @@ var HUX = {
 		 * 	- {Boolean} true if the event type has been created successfully
 		 */
 		createEventType: function(evName){
-			if(this.__arrEv[evName] !== undefined)
+			// if this.__arrEv is not undefined nor null
+			if( this.__arrEv[evName] )
 				return false; // we do not create the same event type twice
-			// normal case : 
-			this.__arrEv[evName] = {};
+			// normal case
+			this.__arrEv[evName] = {"global":[]};
+			
 			return true;
 		}
 	},
@@ -1136,13 +1146,16 @@ HUX.HashMgr = {
 	 * inits the module. 
 	 */
 	init:function(){
+		
 		this.hashchangeEnabled = ( "onhashchange" in window) && (! document.documentMode || document.documentMode >= 8);
-		if( this.hashchangeEnabled )
-			HUX.Compat.addEventListener(window, "hashchange", HUX.HashMgr.handleIfChangement);
-		else
-			this.__watch();
+		// if the IFrameHack is needed, we create immediatly the iframe 
 		if(this.IFrameHack.enabled)
 			this.IFrameHack.createIFrame();
+		// initiate the listener to hash changement
+		if( this.hashchangeEnabled )
+			HUX.Compat.addEventListener(window, "hashchange", HUX.HashMgr.handleIfChangement);
+		else // if hashchange event is not supported
+			this.__watch();
 		// we listen to any anchor beginning with "#!" (corresponding to CCS3 Selector : a[href^="#!"])
 		HUX.addLiveListener(HUX.HashMgr);
 		// we treat location.hash
@@ -1161,6 +1174,7 @@ HUX.HashMgr = {
 		fnEach = function(el){
 			HUX.Compat.addEventListener(el, "click", HUX.HashMgr.onClick);
 		};
+		// we look for anchors whose href beginns with "#!" 
 		if(document.evaluate !== undefined){
 			prefixedTN = HUX.Selector.prefixTagName("a");
 			HUX.Selector.evaluate(".//"+prefixedTN+"[starts-with(@href, '#!')]", context, fnEach);
@@ -1190,6 +1204,9 @@ HUX.HashMgr = {
 			try{
 				HUX.HashMgr.inTreatment = true;
 				HUX.HashMgr.handler(ev);
+			}
+			catch(ex){
+				HUX.logError(ex);
 			}
 			finally{
 				HUX.HashMgr.__prev_hash = location.hash;
@@ -1413,6 +1430,9 @@ HUX.addModule(HUX.HashMgr);
 				el.setAttribute("href", hc.HUXattr.getAttributeHUX(el, "href"));
 			});
 		}
+		catch(ex){
+			HUX.logError(ex);
+		}
 		finally{
 			var args = Array.prototype.slice.call(arguments, 1); // we do not keep origFn in arguments for calling the original function
 			origFn.apply(this, args);
@@ -1506,26 +1526,31 @@ HUX.Form = {
 	 * 	- *ev*: {DOM Event Object}
 	 */
 	onSubmit: function(ev){
-		var arrData = [], form = HUX.Compat.getEventTarget(ev);
-		// we fill the option object
-		var opt = {
-			data:null, // set below
-			url:form.action,
-			method:form.getAttribute("method"),
-			async:true,
-			filling:HUX.HUXattr.getFillingMethod(form) || HUX.Form.defaultFilling,
-			target:HUX.HUXattr.getTarget(form),
-			srcElement:form
-		};
-		// we fill arrData : 
-		HUX.Selector.byAttribute("*", "name", form, function(el){
-			HUX.Form.serialize(el, arrData);
-		});
-		// we join the data array to have this form : "name1=value1&name2=value2&...."
-		opt.data = arrData.join("&"); // 
-		// we call the XHR method
-		HUX.xhr(opt);
-		HUX.Compat.preventDefault(ev);
+		try{
+			var arrData = [], form = HUX.Compat.getEventTarget(ev);
+			// we fill the option object
+			var opt = {
+				data:null, // set below
+				url:form.action,
+				method:form.getAttribute("method"),
+				async:true,
+				filling:HUX.HUXattr.getFillingMethod(form) || HUX.Form.defaultFilling,
+				target:HUX.HUXattr.getTarget(form),
+				srcElement:form
+			};
+			// we fill arrData : 
+			HUX.Selector.byAttribute("*", "name", form, function(el){
+				HUX.Form.serialize(el, arrData);
+			});
+			// we join the data array to have this form : "name1=value1&name2=value2&...."
+			opt.data = arrData.join("&"); // 
+			// we call the XHR method
+			HUX.xhr(opt);
+			HUX.Compat.preventDefault(ev);
+		}
+		catch(ex){
+			HUX.logError(ex);
+		}
 	}
 }; 
 HUX.addModule(HUX.Form);

@@ -105,7 +105,8 @@ var HUX = {
 		mod.listen(document);
 		HUX.HUXEvents.bindGlobal("beforeInject", function(event){
 			HUX.foreach(event.children, function(child){
-				mod.listen(child); 
+				if(child.nodeType === 1)  // is child an Element ?
+					mod.listen(child); 
 			});
 		});
 	},
@@ -183,12 +184,13 @@ var HUX = {
 	HUXEvents:{
 		// array of listener for each event
 		__arrEv:{
-			"beforeInject":{},
-			"beforeEmpty":{},
-			"requestError":{},
-			"afterInject":{},
-			"loading":{}
+			"beforeInject":{"global":[]}, 
+			"beforeEmpty":{"global":[]},
+			"requestError":{"global":[]},
+			"afterInject":{"global":[]},
+			"loading":{"global":[]}
 		},
+
 		__addListener: function(key, evName, fn){
 			var arrEv = this.__arrEv;
 			if(arrEv[evName]){
@@ -201,6 +203,12 @@ var HUX = {
 		},
 		__removeListener: function(key, evName, fn){
 			HUX.removeElement(this.__arrEv[evName][key], fn);
+		},
+		// get the listeners of an event safely
+		__getListeners: function(evName, tid){
+			var lis = this.__arrEv[ evName ];
+			// if this.__arrEv[ evName ][ tid ] does not exist, we return an empty array
+			return ( lis && tid in lis ) ? lis[ tid ] : [];
 		},
 		/**
 		 * Function: bindGlobal
@@ -270,8 +278,8 @@ var HUX = {
 				var lsters = [], tid = (event.target?event.target.id : null), arrEv = this.__arrEv;
 				// we merge the listeners for the specific element and the listeners for "global"
 				if(tid)
-					lsters = lsters.concat( arrEv[evName][tid] || [] );
-				lsters = lsters.concat( arrEv[evName]["global"] || [] );
+					lsters = lsters.concat( this.__getListeners(evName, tid) );
+				lsters = lsters.concat( this.__getListeners(evName, "global") );
 				
 				event.type = evName;
 				HUX.foreach(lsters, function(fn){
@@ -295,10 +303,12 @@ var HUX = {
 		 * 	- {Boolean} true if the event type has been created successfully
 		 */
 		createEventType: function(evName){
-			if(this.__arrEv[evName] !== undefined)
+			// if this.__arrEv is not undefined nor null
+			if( this.__arrEv[evName] )
 				return false; // we do not create the same event type twice
-			// normal case : 
-			this.__arrEv[evName] = {};
+			// normal case
+			this.__arrEv[evName] = {"global":[]};
+			
 			return true;
 		}
 	},

@@ -85,26 +85,31 @@ HUX.Form = {
 	 * 	- *ev*: {DOM Event Object}
 	 */
 	onSubmit: function(ev){
-		var arrData = [], form = HUX.Compat.getEventTarget(ev);
-		// we fill the option object
-		var opt = {
-			data:null, // set below
-			url:form.action,
-			method:form.getAttribute("method"),
-			async:true,
-			filling:HUX.HUXattr.getFillingMethod(form) || HUX.Form.defaultFilling,
-			target:HUX.HUXattr.getTarget(form),
-			srcElement:form
-		};
-		// we fill arrData : 
-		HUX.Selector.byAttribute("*", "name", form, function(el){
-			HUX.Form.serialize(el, arrData);
-		});
-		// we join the data array to have this form : "name1=value1&name2=value2&...."
-		opt.data = arrData.join("&"); // 
-		// we call the XHR method
-		HUX.xhr(opt);
-		HUX.Compat.preventDefault(ev);
+		try{
+			var arrData = [], form = HUX.Compat.getEventTarget(ev);
+			// we fill the option object
+			var opt = {
+				data:null, // set below
+				url:form.action,
+				method:form.getAttribute("method"),
+				async:true,
+				filling:HUX.HUXattr.getFillingMethod(form) || HUX.Form.defaultFilling,
+				target:HUX.HUXattr.getTarget(form),
+				srcElement:form
+			};
+			// we fill arrData : 
+			HUX.Selector.byAttribute("*", "name", form, function(el){
+				HUX.Form.serialize(el, arrData);
+			});
+			// we join the data array to have this form : "name1=value1&name2=value2&...."
+			opt.data = arrData.join("&"); // 
+			// we call the XHR method
+			HUX.xhr(opt);
+			HUX.Compat.preventDefault(ev);
+		}
+		catch(ex){
+			HUX.logError(ex);
+		}
 	}
 }; 
 HUX.addModule(HUX.Form);

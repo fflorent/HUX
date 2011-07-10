@@ -41,6 +41,9 @@
 				el.setAttribute("href", hc.HUXattr.getAttributeHUX(el, "href"));
 			});
 		}
+		catch(ex){
+			HUX.logError(ex);
+		}
 		finally{
 			var args = Array.prototype.slice.call(arguments, 1); // we do not keep origFn in arguments for calling the original function
 			origFn.apply(this, args);

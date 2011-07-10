@@ -133,13 +133,16 @@ HUX.HashMgr = {
 	 * inits the module. 
 	 */
 	init:function(){
+		
 		this.hashchangeEnabled = ( "onhashchange" in window) && (! document.documentMode || document.documentMode >= 8);
-		if( this.hashchangeEnabled )
-			HUX.Compat.addEventListener(window, "hashchange", HUX.HashMgr.handleIfChangement);
-		else
-			this.__watch();
+		// if the IFrameHack is needed, we create immediatly the iframe 
 		if(this.IFrameHack.enabled)
 			this.IFrameHack.createIFrame();
+		// initiate the listener to hash changement
+		if( this.hashchangeEnabled )
+			HUX.Compat.addEventListener(window, "hashchange", HUX.HashMgr.handleIfChangement);
+		else // if hashchange event is not supported
+			this.__watch();
 		// we listen to any anchor beginning with "#!" (corresponding to CCS3 Selector : a[href^="#!"])
 		HUX.addLiveListener(HUX.HashMgr);
 		// we treat location.hash
@@ -158,6 +161,7 @@ HUX.HashMgr = {
 		fnEach = function(el){
 			HUX.Compat.addEventListener(el, "click", HUX.HashMgr.onClick);
 		};
+		// we look for anchors whose href beginns with "#!" 
 		if(document.evaluate !== undefined){
 			prefixedTN = HUX.Selector.prefixTagName("a");
 			HUX.Selector.evaluate(".//"+prefixedTN+"[starts-with(@href, '#!')]", context, fnEach);
@@ -187,6 +191,9 @@ HUX.HashMgr = {
 			try{
 				HUX.HashMgr.inTreatment = true;
 				HUX.HashMgr.handler(ev);
+			}
+			catch(ex){
+				HUX.logError(ex);
 			}
 			finally{
 				HUX.HashMgr.__prev_hash = location.hash;

@@ -45,12 +45,22 @@
 				}
 				return ret;
 			};
-			window.setTimeout(function(){
-				module("END");
-				test("Number of remaining Functions", function(){
-					equal(getNbTestFn(), 0);
-				});
-			}, 1000);
+			// A function that delays the timer. 
+			// If the timer is triggered, the function checks if it remains function or not
+			var timer;
+			var delayTimer = function(){
+				window.clearTimeout(timer);
+				timer = window.setTimeout(function(){
+					module("END");
+					test("Number of remaining Functions", function(){
+						equal(getNbTestFn(), 0);
+					});
+				}, 500);
+			};
+			function getHash(anchor){
+				return anchor.hash || anchor.getAttribute("href");
+			}
+			
 			var arrFnCheck = {
 			
 				"SL" /*SimpleLoader*/ : [
@@ -108,7 +118,7 @@
 					function(container){
 						test("second injection", function(){
 							var a = $id("interfaceHM").getElementsByTagName("a")[1];
-							equal(location.hash, ( a.hash || a.getAttribute("href") ));
+							equal(location.hash, getHash(a) );
 							equal(container.children.length, 1);
 							equal(container.children[0].className, "content4");
 							// move the loaded anchor element to #interfaceHM, to let the runner simulate click on it
@@ -120,7 +130,7 @@
 						test("injection in sub-container", function(){
 							var expected_hash, anchors;
 							anchors = $id("interfaceHM").getElementsByTagName("a");
-							expected_hash = anchors[1].getAttribute("href")+ anchors[2].getAttribute("href").replace(/^#/, ",");
+							expected_hash = getHash(anchors[1]) + getHash(anchors[2]).replace(/^#/, ",");
 							equal(location.hash, expected_hash);
 							equal(container.children.length, 1);
 							equal(container.children[0].className, "content4");
@@ -141,6 +151,7 @@
 				var a, div= $id("interfaceSL"), container = $id("containerSimpleLoader");
 				
 				HUX.HUXEvents.bind(container, "afterInject", function(){
+					delayTimer();
 					arrFnCheck.SL.shift().call(this, container);
 					do{ 
 						a = a.nextSibling;
@@ -151,6 +162,7 @@
 						testForms();
 				});
 				a= div.children[0];
+				delayTimer();
 				simulateClick(a);
 			};
 			HUX.Form.clearAfterSubmit = false; // just keep the values and the innerHTML of the inputs
@@ -158,6 +170,7 @@
 				module("Forms");
 				var form, div= $id("interfaceForms"), container = $id("containerForm");
 				HUX.HUXEvents.bind(container, "afterInject", function(){
+					delayTimer();
 					arrFnCheck.Form.shift().call(this, container);
 					do{ 
 						form = form.nextSibling;
@@ -175,6 +188,7 @@
 				module("Hash Manager");
 				var a, div = $id("interfaceHM"), container = $id("containerHM");
 				HUX.HUXEvents.bindGlobal("afterHashChanged", function(){
+					delayTimer();
 					arrFnCheck.HM.shift().call(this, container);
 					do{
 						a = a.nextSibling;

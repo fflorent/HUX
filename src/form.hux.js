@@ -31,7 +31,7 @@ HUX.Form = {
 	 * 
 	 * Default: "append"
 	 */
-	defaultFilling: HUX.Inject.sMethods.APPEND,
+	defaultFilling: "append",
 	/**
 	 * Variable: clearAfterSubmit
 	 * {Boolean} if true, the form is cleared after being submitted

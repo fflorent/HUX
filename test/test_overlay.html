@@ -1,0 +1,41 @@
+<html>
+	<head>
+		<title>Tests for Overlay</title>
+		<script type="text/javascript" src="../hux.js" ></script>
+		<script type="text/javascript">
+			HUX.Compat.addEventListener(window, "load", function(ev){
+				HUX.xhr({
+					"url":"contents/overlay1.xml",
+					"method":"get",
+					"data": null,
+					"async": true,
+					"filling":"overlay"
+				});
+			});
+		</script>
+	</head>
+	<body>
+		<h1>Test 1</h1>
+		<h3>What you should see is:</h3>
+		<p >
+			 ~~ This good sentence is the expected one :) ~~
+		</p>
+		<h3>What you get is : </h3>
+		<p id="run"><span class="tilde"></span><span>This </span><span id="toremove">wrong </span><span>sentence </span><span id="toreplace">isn't</span> the <span id="one">one</span><span class="tilde"></span></p>
+		<hr/>
+		<h1>Test 2</h1>
+		<h3>What you should see is:</h3>
+		<ul >
+			<li>GREAT</li>
+			<li>This</li>
+			<li>test</li>
+			<li>is</li>
+			<li>passed</li>
+			<li>:)</li>
+		</ul>
+		<h3>What you get is : </h3>
+		<ul id="run2">
+			<li id="failed2">FAILED :(</li>
+		</ul>
+	</body>
+</html>

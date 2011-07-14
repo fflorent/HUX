@@ -25,6 +25,23 @@
 
 //TODO : split the core ...
 
+// nodeType Constants if not defined
+if(!document.ELEMENT_NODE)
+{
+	document.ELEMENT_NODE = 1;
+	document.ATTRIBUTE_NODE = 2;
+	document.TEXT_NODE = 3;
+	document.CDATA_NODE = 4;
+	document.ENTITY_REFERENCE_NODE = 5;
+	document.ENTITY_NODE = 6;
+	document.PROCESSING_INSTRUCTION_NODE = 7;
+	document.COMMENT_NODE = 8;
+	document.DOCUMENT_NODE = 9;
+	document.DOCUMENT_TYPE_NODE = 10;
+	document.DOCUMENT_FRAGMENT_NODE = 11;
+	document.NOTATION_NODE = 12;
+}
+
 /**
  * Namespace: HUX Core
  * NOTE : all methods or attributes beginning with __ (for example : HUX.HUXEvents.__arrEv) should not be used elsewhere than in their namespace
@@ -169,7 +186,48 @@ var HUX = {
 		array.length = index;
 		return array.push.apply(array, rest);
 	},
+	// we cannot use document.importNode directly, since XML is case-sensitive, and HTML node names are uppercase. So it would require 
+	// 	that we write node names in uppercase in our Overlay XML document ... It is not natural, so we need to use something else.
+	// thanks to Anthony Holdener for this js implementation of importNode : 
+	// see http://www.alistapart.com/articles/crossbrowserscripting/
 	
+	/**
+	 * Function: importNode
+	 * a function similar to document.importNode, that import node from a document to the current HTML document. 
+	 * See <https://developer.mozilla.org/en/DOM/document.importNode> for more information
+	 * 
+	 * Parameters:
+	 * 	- *node*: {Node} the node to import
+	 * 	- *allChildren*: {Boolean} set to true to also import its children
+	 * 
+	 * Returns:
+	 * 	- {Node} the imported node
+	 */
+	importNode: function(node, allChildren) {
+		/* find the node type to import */
+		switch (node.nodeType) {
+			case document.ELEMENT_NODE:
+				/* create a new element */
+				var newNode = document.createElement(node.nodeName);
+				/* does the node have any attributes to add? */
+				if (node.attributes && node.attributes.length > 0)
+					/* add all of the attributes */
+					for (var i = 0, il = node.attributes.length; i < il;)
+						newNode.setAttribute(node.attributes[i].nodeName, node.getAttribute(node.attributes[i++].nodeName));
+				/* are we going after children too, and does the node have any? */
+				if (allChildren && node.childNodes && node.childNodes.length > 0)
+					/* recursively get all of the child nodes */
+					for (var i = 0, il = node.childNodes.length; i < il;)
+						newNode.appendChild(this.importNode(node.childNodes[i++], allChildren));
+				return newNode;
+				break;
+			case document.TEXT_NODE:
+			case document.CDATA_SECTION_NODE:
+			case document.COMMENT_NODE:
+				return document.createTextNode( node.nodeValue );
+				break;
+		}
+	},
 	
 	/**
 	 * Namespace: HUXEvents
@@ -277,6 +335,7 @@ var HUX = {
 			try{
 				var lsters = [], tid = (event.target?event.target.id : null), arrEv = this.__arrEv;
 				// we merge the listeners for the specific element and the listeners for "global"
+				
 				if(tid)
 					lsters = lsters.concat( this.__getListeners(evName, tid) );
 				lsters = lsters.concat( this.__getListeners(evName, "global") );
@@ -334,59 +393,138 @@ var HUX = {
 	/**
 	 * Namespace; Inject
 	 * 
-	 * DOM Injection manager
-	 * Methods here may not be used directly. 
-	 * Prefer use the function HUX.inject
+	 * DOM Injection manager. 
 	 */
 	Inject:{
+		
 		/**
-		 * Function: init
-		 * inits the module
+		 * Function: __proceed
+		 * proceeds to the injection. Do not use this function directly. See <inject>
+		 * 
+		 * Parameters:
+		 * 	- *target* : {Element} the element which will receive DOMContent
+		 * 	- *method* : {String} the string tallying to hux:filling
+		 * 	- *DOMContent* : {DocumentFragment or Document} container of elements to be added to target
+		 * 
+		 * NOTE : DOMContent is a DocumentFragment if it has been generated through a String, or a Document if it has been given as is by the brower. 
+		 * 	If it is a Document, you may have to use <importNode>.
+		 * 	In the most cases, it is a DocumentFragment.
+		 * 
+		 * Returns:
+		 * 	- {NodeList of Elements} the inserted elements
+		 */
+		__proceed: function(target, method, DOMContent){
+			var aInserted = this.callFillingMethod(target, method, DOMContent);
+			HUX.HUXEvents.trigger("afterInject", {target: target || document.body, children: aInserted});
+			return aInserted;
+			
+		},
+		__checkTarget: function(target, methodName){
+			if(!target)
+				throw new Error(methodName+" filling method requires a target element");
+		},
+		__fillingMethods: {
+			prepend: function(DOMContent, target){
+				this.__checkTarget( target, "prepend")
+				DOMContent = this.forceDocumentFragment( DOMContent );
+				if(target.childNodes.length > 0){ // we use InsertBefore
+					HUX.HUXEvents.trigger("beforeInject", {target: target, children: DOMContent.childNodes});
+					firstChild = target.firstChild;
+					target.insertBefore(DOMContent, firstChild);
+					return DOMContent.childNodes;
+				}
+				else{ // if target has no children, we append 
+					return this.callFillingMethod(target, "append", DOMContent);
+				}
+			},
+			append: function(DOMContent, target){
+				var aInserted;
+				DOMContent = this.forceDocumentFragment( DOMContent );
+				if(DOMContent.nodeType !== document.DOCUMENT_FRAGMENT_NODE)
+					throw new TypeError("append expects a DocumentFragment");
+				this.__checkTarget(target, "append");
+				HUX.HUXEvents.trigger("beforeInject", {target: target, children: DOMContent.childNodes});
+				target.appendChild(DOMContent);
+				aInserted = target.childNodes;
+				return aInserted;
+			},
+			replace: function(DOMContent, target){
+				this.__checkTarget(target, "replace");
+				this.empty(target);
+				return this.callFillingMethod(target, "append", DOMContent);
+			}
+		},
+		/**
+		 * Function: callFillingMethod
+		 * calls a filling method
+		 * 
+		 * NOTE: This function is rather designed to be called by other filling methods. 
+		 * 	If you want to handle an event, see <HUX.inject>
 		 * 
 		 * Parameters:
 		 * 	- *target* : {Element} the element which will receive @DOMContent
 		 * 	- *method* : {String} the string tallying to hux:filling
-		 * 	- *DOMContent* : {Array of Element} Array of elements to be added to @target
+		 * 	- *DOMContent* : {DocumentFragment or Document} Document(Fragment) containing elements to be added to @target
+		 * 
+		 * Returns:
+		 * 	- {NodeList} the inserted elements
 		 */
-		init: function(target, method, DOMContent){
-			var sMethods = this.sMethods, firstChild, done = false, aInserted = [];
-			switch(method){
-				case sMethods.PREPEND:
-					if(target.childNodes.length > 0){ // we use InsertBefore
-						HUX.HUXEvents.trigger("beforeInject", {target: target, children: DOMContent});
-						firstChild = target.firstChild;
-						HUX.foreach(DOMContent, function(el){
-							target.insertBefore(el, firstChild);
-						});
-					}
-					else{ // if target has no children, we append 
-						return this.init(target, sMethods.APPEND, DOMContent);
-					}
-					done = true;
-					break;
-					
-				case sMethods.APPEND: 
-					HUX.HUXEvents.trigger("beforeInject", {target: target, children: DOMContent});
-					while(DOMContent.length > 0)
-						aInserted.push( target.appendChild(DOMContent[0]) );
-					done = true;
-					break;
-					
-				case sMethods.REPLACE:
-					// In order to replace the content of the target, we empty it, and we append DOMContent in it
-					this.empty(target);
-					return this.init(target, sMethods.APPEND, DOMContent);
-			}
-			if(done)
-				HUX.HUXEvents.trigger("afterInject", {target: target, children: aInserted});
+		callFillingMethod: function(target, method, DOMContent){
+			return this.__fillingMethods[ method ].call(this, DOMContent, target || null);
 		},
 		/**
-		 * Variable: sMethods
+		 * Function: setFillingMethod
+		 * sets a function for a filling method.
+		 * 
+		 * Parameters:
+		 * 	- *method*: {String} the filling method
+		 * 	- *fn*: {Function} the function to call when HUX proceeds to a request with that filling method
+		 * 	- *requiresTarget*: {boolean} true if the function requires a target element (default: false)
+		 * 
+		 * Fn must have this signature: 
+		 * 	- function(DOMContent, target){ ... }
+		 * 	
+		 * With:
+		 * 	- *this* = HUX.Inject, so you can call its methods
+		 * 	- *DOMContent*: {DocumentFragment or Document} the received elements via XHR
+		 * 	- *target*: {Element} the element receiving the content (if no target: null)
+		 * 	- *returns* : {Array of elements} the inserted elements
+		 * 
+		 * Example of use: 
+		 * >	this.setFillingMethod("myMethod", function(DOMContent, target){
+		 * >		var inserted;
+		 * >		inserted = target.appendChild( DOMContent[0] ); // suppose we only want to insert the first element
+		 * >		return new Array(inserted); // we return a single-array of element
+		 * >	}, true); // we have to set requiresTarget to true because we need target
+		 * 
 		 */
-		sMethods:{
-			PREPEND:"prepend",
-			APPEND:"append",
-			REPLACE:"replace"
+		setFillingMethod: function( method, fn, requiresTarget){
+			var _fn = fn;
+			if(requiresTarget){
+				// we create a proxy to call __checkTarget before calling the original function
+				_fn = function(DOMContent, target){
+					this.__checkTarget(target, method);
+					return fn.apply(this, arguments);
+				}
+			}
+			this.__fillingMethods[ method ] = _fn;
+		},
+		/**
+		 * Function: forceDocumentFragment
+		 * if DOMContent is a document, converts *node* to a DocumentFragment, or return *node* as is otherwise.
+		 * 
+		 * Parameters: 
+		 * 	- *node*: {Document or DocumentFragment} the node to convert to DocumentFragment
+		 * 
+		 * Returns:
+		 * 	- {DocumentFragment} the DocumentFragment converted (or *node* as is if it was already a DocumentFragment)
+		 */
+		forceDocumentFragment: function(doc){
+			var ret = doc;
+			if(doc.nodeType === document.DOCUMENT_NODE){
+				ret = this.injectIntoDocFrag( [ HUX.importNode(doc.childNodes) ] );
+			}
+			return ret;
 		},
 		/**
 		 * Function: empty
@@ -404,17 +542,41 @@ var HUX = {
 		},	
 		/**
 		 * Function: getChildren
+		 * DEPRECATED: use <injectIntoDocFrag> instead
+		 * 
 		 * gets all the children from a parent Element
 		 * 
 		 * Parameters:
 		 * 	- *parent*: {Element} the parent Element
 		 * 
 		 * Returns:
-		 * 	- {Array of Elements} the children
+		 * 	- {NodeList} the children
 		 */
 		getChildren: function(parent){
 			return parent.childNodes;
 		},
+		/**
+		 * Function: injectIntoDocFrag
+		 * injects the nodeList (or any enumerable object of DOM elements) in a DocumentFragment
+		 * and returns the last.
+		 * 
+		 * Parameters:
+		 * 	- *nodes* : {NodeList} the nodes
+		 * 
+		 * Returns:
+		 * 	- {DocumentFragment} the DocumentFragment with the cloned nodes
+		 */
+		injectIntoDocFrag: function(nodes){
+			var frag = document.createDocumentFragment(), cn = parent.childNodes;
+			var i = 0;
+			for(var i = 0;  i < nodes.length; i++){
+				// depending on the parentNode, the NodeList can remove nodes[ i ] once it is appended somewhere else
+				// so, we use cloneNode(true), even if it is less optimized
+				frag.appendChild( nodes[i].cloneNode(true) );
+			}
+			return frag;
+		},
+		
 		/**
 		 * Function: htmltodom
 		 * convert HTML String to DOM
@@ -424,7 +586,7 @@ var HUX = {
 		 * 	- *context* : {Element} the element designed to receive the content (optional)
 		 * 
 		 * Returns:
-		 * 	- {Array of Element} the generated Elements
+		 * 	- {DocumentFragment} a DocumentFragment with the generated Elements
 		 */
 		htmltodom: function(sHtml, context){
 			var parent = context ? context.cloneNode(false) : document.createElement('div');
@@ -435,11 +597,13 @@ var HUX = {
 				// IE doesn't allow using innerHTML with table,
 				// but allows create a div element in which we inject the HTML String of a TABLE
 				if(parent.tagName === "TABLE")
-					parent = this.htmltodom("<TABLE>"+sHtml+"</TABLE>", null)[0];
+					parent = this.htmltodom("<TABLE>"+sHtml+"</TABLE>", null).firstChild;
 				else
 					HUX.logError(e);
 			}
-			return this.getChildren(parent);
+			var ret = this.injectIntoDocFrag(parent.childNodes);
+			parent = null;
+			return ret;
 		}
 	},
 	/**
@@ -454,13 +618,21 @@ var HUX = {
 		var DOMContent;
 		if(typeof content === "string")
 			DOMContent = this.Inject.htmltodom(content, target);
-		else if(content instanceof Array)
-			DOMContent = content;
+		else if(content.nodeType){ // if content is a node : 
+			if(content.nodeType === document.DOCUMENT_NODE){ // if the node is an XML Document
+				DOMContent = content;
+			}
+			else
+				DOMContent = this.Inject.injectIntoDocFrag( [ content ] ); // we create a single element Array
+		}
+		else if(content.length !== undefined){ // if the content is enumerable and is not a node
+			DOMContent = this.Inject.injectIntoDocFrag( content );
+		}
 		else
 			throw new TypeError("content : invalid argument");
 		if(! method) // if method === null, default is REPLACEMENT
-			method = this.Inject.sMethods.REPLACE;
-		this.Inject.init.call(this.Inject, target, method, DOMContent); 
+			method = "replace";
+		this.Inject.__proceed.call(this.Inject, target, method, DOMContent); 
 	},
 	/**
 	 * Namespace: Selector
@@ -648,8 +820,8 @@ var HUX = {
 	 */
 	XHR: {
 		// see HUX.xhr(opt)
-		init: function(opt){
-			if(!opt.target || opt.url.length === 0)
+		proceed: function(opt){
+			if(! opt.url.length === 0)
 				throw new TypeError("invalid arguments");
 			try{
 				var data = null, xhr;
@@ -660,17 +832,17 @@ var HUX = {
 				xhr = this.getXhrObject();
 				
 				// we add GET parameters to the URL. If there are some already, we add a "&"+opt.data to the string. Otherwise, we add "?"+opt.data
-				if(opt.method.toLowerCase() === "get" && typeof opt.data !== "undefined" && opt.data)
+				if(opt.method.toLowerCase() === "get" && opt.data)
 					opt.url += (opt.url.indexOf("?") >= 0 ? "&" : "?") +opt.data;
 				else if(opt.method.toLowerCase() === "post")
-					data = opt.data;
+					data = opt.data || null; // if opt.data is undefined, we set it to null
 				// is there connection parameters ?
 				if( opt.username )
 					xhr.open(opt.method, opt.url, opt.async, opt.username, opt.password);
 				else
 					xhr.open(opt.method, opt.url, opt.async);
 				// we trigger the event "loading"
-				HUX.HUXEvents.trigger("loading", {target:opt.target});
+				HUX.HUXEvents.trigger("loading", {target:opt.target || document.body});
 				// 
 				this.setReadystatechange(xhr, opt.filling, opt.target);
 				xhr.setRequestHeader("Content-Type", opt.contentType || "application/x-www-form-urlencoded");
@@ -685,8 +857,8 @@ var HUX = {
 			return window.ActiveXObject ? new ActiveXObject("Microsoft.XMLHTTP") : new XMLHttpRequest();
 		},
 		
-		onSuccess: function(rspText, xhr, filling, target){
-			HUX.inject(target, filling, rspText);
+		onSuccess: function(xhr, filling, target){
+			HUX.inject(target, filling, (xhr.responseXML && xhr.responseXML.documentElement)? xhr.responseXML : xhr.responseText);
 		},
 		onError: function(xhr){
 			HUX.HUXEvents.trigger("requestError", {xhr:xhr});
@@ -698,7 +870,7 @@ var HUX = {
 					try{
 						if(xhr.readyState  === 4){
 							if(xhr.status  === 200) 
-								self.onSuccess(xhr.responseText, xhr, filling, target);
+								self.onSuccess(xhr, filling, target);
 							else 
 								self.onError(xhr);
 						}
@@ -723,16 +895,16 @@ var HUX = {
 	 * opt:
 	 * 	- *opt.url* : {String} the URL to load
 	 * 	- *opt.method* : {String} the method : POST or GET
+	 * 	- *opt.filling* : {String} the filling method ("replace", "append", "prepend", ...)
+	 * 	- *opt.target* : {Element} the target (in which we will inject the content). Optional for some filling methods.
 	 * 	- *opt.data* : {URLEncoded String} the data to send
-	 * 	- *opt.target* : {Element} the target (in which we will inject the content)
 	 *	- *opt.async* : {Boolean} asynchronous if true, synchronous if false (default = true)
-	 *	- opt.username ; {String} the login (optional)
+	 *	- *opt.username* ; {String} the login (optional)
 	 * 	- *opt.password* : {String} the password (optional)
 	 *	- *opt.contentType* : {String} Content-Type Request Header (default = "application/x-www-form-urlencoded")
-	 * 	- *opt.filling* : {String} the filling method ("replace", "append", "prepend", ...)
 	 */
 	xhr:function(opt){
-		return this.XHR.init.apply(this.XHR, arguments);
+		return this.XHR.proceed.apply(this.XHR, arguments);
 	},
 	/**
 	 * Namespace: HUXattr
@@ -917,7 +1089,7 @@ HUX.addModule( HUX );
 
 /**
 * Function#hux_wrap(wrapper) -> Function
-* - wrapper (Function): The function to use as a wrapper.
+* - *wrapper* (Function): The function to use as a wrapper.
 *
 * Returns a function "wrapped" around the original function.
 *

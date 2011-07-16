@@ -114,10 +114,8 @@ HUX.Overlay = {
 		
 		if(this.tabAttr[  aName ] !== undefined)
 			return;
-		if(aName === "class"){
-			var rExp = new RegExp("(^|\\s)"+attr.nodeValue+"($|\\s)"); // rExp ensure that there will not be any double
-			target.className = target.className.replace(rExp, "$2") + attr.nodeValue; 
-		}
+		if(aName === "class")
+			target.className += attr.nodeValue;
 		else
 			target.setAttribute(attr.nodeName, attr.nodeValue);
 		

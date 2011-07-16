@@ -1,6 +1,0 @@
-<script type="text/javascript" src="contents/sampleC5.js" ></script>
-<div id="containerC5">must not appear</div>
-<script type="text/javascript">
-	console.log(window.C5HTML);
-	$id("containerC5").innerHTML=window.C5HTML;
-</script>

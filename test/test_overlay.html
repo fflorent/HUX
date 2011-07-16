@@ -4,6 +4,9 @@
 		<script type="text/javascript" src="../hux.js" ></script>
 		<script type="text/javascript">
 			HUX.Compat.addEventListener(window, "load", function(ev){
+				document.body.addEventListener("DOMSubtreeModified", function(ev){
+					console.log(ev);
+				}, false);
 				HUX.xhr({
 					"url":"contents/overlay1.xml",
 					"method":"get",
@@ -12,6 +15,7 @@
 					"filling":"overlay"
 				});
 			});
+			
 		</script>
 	</head>
 	<body>

@@ -1,0 +1,4 @@
+ RewriteEngine on
+ RewriteRule f_(.*)	contents/features/$1.html
+ RewriteCond %{REQUEST_FILENAME} !-f
+ RewriteRule ([^.]+)	contents/$1.html

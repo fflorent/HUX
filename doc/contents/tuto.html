@@ -1,0 +1,27 @@
+<table id="features">
+	<tr>
+		<td class="content">
+			<div id="tuto">
+				<p class="note">Before beginning to learn how to use HUX, you need to have a basic knowledge of HTML. <br/>If you do, that should be fine =)</p>
+				<h1>Simple HUX Request</h1>
+				<p>As a first HUX request, you will do this : </p>
+				<ul>
+					<li><a href="resources/hello_world.html" data-hux-target="HUXdiv1">Say Hello!</a></li>
+					<li id="HUXdiv1">...</li>
+				</ul>
+				<p>To do that, you will need to make : </p>
+				<ul>
+					<li>a link with a <a href="#!container=features,!feature=f_target">target </a> attribute.</li>
+					<li>a target element with an id</li>
+				</ul>
+				<p>A target element is the element that will receive the HTML content requested. The attribute <a href="#!container=features,!feature=f_target">target</a> 
+					contains the ID of the target element.</p>
+				<p>In other word, if you have the following target element : </p><p><code>&lt;div id="myTN"&gt;&lt;div&gt;</code></p><p>you would need a link of this type : <p><code>&lt;a href="/to/my/content.html" data-hux-target="myTN"&gt;click me&lt;a&gt;</code></p>
+					<br/>So, by clicking on the link, the user will load content.html in the div element (named target node because it is the node that will receive the content)</p>
+				<p>TODO : exemple ici</p>
+				<p>Easy, wasn't it? Let's continue by playing with the <a href="#!container=features,!feature=f_filling">filling</a> attribute.</p>
+				
+			</div>
+		</td>
+	</tr>
+</table>

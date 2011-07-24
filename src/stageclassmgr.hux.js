@@ -62,13 +62,18 @@
 		 */
 		eventHandler: function(ev){
 			var timeout = 0;
+			var target = ev.target || document.body;
 			if(ev.type === "afterInject")
 				timeout = hscm.delayEnd;
 			// NOTE : IE does not implement extra arguments for setTimeout, so we use an anonymous function 
 			// to send ev.target and ev.type
-			setTimeout(function(){
-				hscm.setHuxClassName(ev.target, ev.type);
-			}, timeout);
+			function run(){
+				hscm.setHuxClassName(target, ev.type);
+			}
+			if(timeout > 0)
+				setTimeout(run, timeout);
+			else
+				run();
 		},
 		/**
 		 * Function: setHuxClassName

@@ -298,8 +298,10 @@ HUX.HashMgr = {
 			replacement = this.__default_content[sTarget];
 			if(replacement !== undefined){
 				target = document.getElementById(sTarget);
-				target.parentNode.insertBefore(replacement, target);
-				target.parentNode.removeChild(target);
+				if(target !== null){
+					target.parentNode.insertBefore(replacement, target);
+					target.parentNode.removeChild(target);
+				}
 			}
 		}
 		

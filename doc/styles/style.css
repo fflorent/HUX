@@ -1,0 +1,136 @@
+.hux_initLoaded {
+	opacity:0.1;
+	/*-moz-transform: opacity(0.1);
+	-webkit-transform: opacity(0.1);
+	-o-transform: opacity(0.1);*/
+}
+.hux_loaded {
+	/*-moz-transform: opacity(1);
+	-webkit-transform: opacity(1);
+	-o-transform: opacity(1);*/
+	opacity:1;
+	-moz-transition: 1s opacity cubic-bezier(0.00,0.00,0.5,1.00);
+	-webkit-transition: 1s opacity cubic-bezier(0.00,0.00,0.5,1.00);
+	-o-transition: 1s opacity cubic-bezier(0.00,0.00,0.5,1.00);
+} 
+body{
+	background-color:#AAF;
+	font-family:sans-serif;
+}
+#container {
+	width:1000px;
+	margin:auto;
+	margin-top:30px;
+	border-radius:5px;
+	height:600px;
+}
+
+/* ===================================
+ * ============  HEADER   ============
+ * =================================== */
+
+#header{
+	height:100px;
+}
+#header_menu{
+	position:absolute;
+	left:600px;
+	border-radius:5px;
+	margin-top:50px;
+	background-color:#EEEEEE;
+}
+
+
+
+#header_menu> ul{
+	position:static;
+	padding:0px;
+	margin:0;
+}
+#header_menu li{
+	float:left;
+	border-left:1px solid;
+}
+
+#header_menu li.first{
+	border-left:none;
+}
+
+#header_menu li>a{
+	line-height:30px;
+	width:100%;
+	padding:7px;
+	color:#0070FF;
+}
+#header_menu li:hover{
+	background-color:#FFF;
+}
+
+
+/* ===================================
+ * =============  MENU   =============
+ * =================================== */
+#menu{
+	width:150px;
+	background-color:#EEE;
+	border-radius:5px;
+	padding:0;
+	vertical-align:top;
+}
+
+.menu>ul{
+	padding:0;
+}
+
+.menu li{
+	list-style:none;
+	margin:0;
+	padding:0;
+}
+
+.menu li > a{
+	text-decoration:none;
+	height:100%;
+	width:100%
+}
+
+#menu .menu_title{
+	background-color:#DDD;
+	text-align:center;
+	margin:0;
+	border-radius:5px 5px 0 0;
+	padding: 5px 0;
+}
+
+/* ===================================
+ * ===========  CONTENT   ============
+ * =================================== */
+
+
+.content{
+	background-color:#EEE;
+	border-radius:5px;
+	min-width:800px;
+	padding:20px 50px 20px 50px;
+	vertical-align:top;
+}
+
+.note{
+	font-size:1.1em;
+	color:green;
+	font-style: italic;
+	border: 1px solid;
+}
+
+h1{
+	color: #0070ff;
+}
+
+code{
+	padding:10px 10px;
+	margin-left:50px;
+	font-size: 12px;
+	background-color:#FFFFDD;
+	border-radius:3px;
+	border:1px solid;
+}

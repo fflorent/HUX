@@ -1483,8 +1483,10 @@ HUX.HashMgr = {
 			replacement = this.__default_content[sTarget];
 			if(replacement !== undefined){
 				target = document.getElementById(sTarget);
-				target.parentNode.insertBefore(replacement, target);
-				target.parentNode.removeChild(target);
+				if(target !== null){
+					target.parentNode.insertBefore(replacement, target);
+					target.parentNode.removeChild(target);
+				}
 			}
 		}
 		
@@ -1930,13 +1932,18 @@ HUX.addModule( HUX.ScriptInjecter );/**
 		 */
 		eventHandler: function(ev){
 			var timeout = 0;
+			var target = ev.target || document.body;
 			if(ev.type === "afterInject")
 				timeout = hscm.delayEnd;
 			// NOTE : IE does not implement extra arguments for setTimeout, so we use an anonymous function 
 			// to send ev.target and ev.type
-			setTimeout(function(){
-				hscm.setHuxClassName(ev.target, ev.type);
-			}, timeout);
+			function run(){
+				hscm.setHuxClassName(target, ev.type);
+			}
+			if(timeout > 0)
+				setTimeout(run, timeout);
+			else
+				run();
 		},
 		/**
 		 * Function: setHuxClassName
@@ -2068,8 +2075,10 @@ HUX.Overlay = {
 		
 		if(this.tabAttr[  aName ] !== undefined)
 			return;
-		if(aName === "class")
-			target.className += attr.nodeValue;
+		if(aName === "class"){
+			var rExp = new RegExp("(^|\\s)"+attr.nodeValue+"($|\\s)"); // rExp ensure that there will not be any double
+			target.className = target.className.replace(rExp, "$2") + attr.nodeValue; 
+		}
 		else
 			target.setAttribute(attr.nodeName, attr.nodeValue);
 		

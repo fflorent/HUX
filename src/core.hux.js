@@ -520,9 +520,13 @@ var HUX = {
 		 * 	- {DocumentFragment} the DocumentFragment converted (or *node* as is if it was already a DocumentFragment)
 		 */
 		forceDocumentFragment: function(doc){
-			var ret = doc;
+			var ret = doc, content;
 			if(doc.nodeType === document.DOCUMENT_NODE){
-				ret = this.injectIntoDocFrag( [ HUX.importNode(doc.childNodes) ] );
+				content = [];
+				HUX.foreach(doc.childNodes, function(c){
+					content.push( c );
+				});
+				ret = this.injectIntoDocFrag( content );
 			}
 			return ret;
 		},
@@ -567,7 +571,7 @@ var HUX = {
 		 * 	- {DocumentFragment} the DocumentFragment with the cloned nodes
 		 */
 		injectIntoDocFrag: function(nodes){
-			var frag = document.createDocumentFragment(), cn = parent.childNodes;
+			var frag = document.createDocumentFragment();
 			var i = 0;
 			for(var i = 0;  i < nodes.length; i++){
 				// depending on the parentNode, the NodeList can remove nodes[ i ] once it is appended somewhere else
@@ -596,8 +600,14 @@ var HUX = {
 			catch(e){
 				// IE doesn't allow using innerHTML with table,
 				// but allows create a div element in which we inject the HTML String of a TABLE
-				if(parent.tagName === "TABLE")
-					parent = this.htmltodom("<TABLE>"+sHtml+"</TABLE>", null).firstChild;
+				if(parent.tagName === "TABLE" ){
+					if(/^<(tr|tbody)/i.test(sHTML)){
+						parent = this.htmltodom("<TABLE>"+sHtml+"</TABLE>", context).firstChild;
+					}
+					else{
+						HUX.logError("TABLE element can only have TR and TBODY elements as direct children");
+					}
+				}
 				else
 					HUX.logError(e);
 			}

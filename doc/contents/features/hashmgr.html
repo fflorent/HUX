@@ -1,0 +1,24 @@
+<h1>Hash Manager</h1>
+<p>The Hash Manager is a plugin for HUX that do HUX requests when you update the Hash of your URL.</p>
+<p>This plugin is recommended when you need to store in your URL the contents that are injected via HUX in your document.</p>
+<p class="note">NOTE : This plugin can only replace the content of a target element (no append nor prepend of content).</p>
+<h2>How To Use it</h2>
+<p>If you enabled it in the download page, you can simply use it by creating links of this syntax : </p>
+<code>&lt;a href="#!ID_TARGET=URL_OF_YOUR_CONTENT"&gt;TEXT&lt;/a&gt;</code>
+<p>Where : </p>
+<ul>
+	<li>ID_TARGET is the <span class="attribute">ID</span> of your target element (see <a href="#!container=features,!feature=f_target">target</a> to understand what it is);</li>
+	<li>URL_OF_YOUR_CONTENT is the URL of the content you want to load;</li>
+</ul>
+<p class="warning">WARNING : HUX does not support cross-domain HTTP Requests. This means that you can only load content of your own site.</p>
+<p class="note">NOTE : if your old URL already contained !ID_TARGET=... , the last will be removed and replaced by #!ID_TARGET=URL_OF_YOUR_CONTENT</p>
+<p>You can also accumulate different ID of targets in the hash or in the <span class="attribute">href</a> attribute of a link.</p>
+<p>To sum-up, the URL will have this form : </p>
+<code>http://your_domain.com[:port]/your/pathname/page.html<b>#!target1=url1,!target2=url2,...</b></code>
+
+<h2>Examples</h2>
+<h3>Example 1</h3>
+<code>
+	&lt;a href="#!ex_target1=/resources/hello_world.html"&gt;click to run Example 1&lt;a&gt;<br/>
+	&lt;div id="ex_target1"&gt;I will disapear...&lt;/div&gt;
+</code>

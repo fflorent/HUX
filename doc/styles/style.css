@@ -18,6 +18,10 @@ body{
 	font-family:sans-serif;
 	margin:0;
 }
+a{
+	outline:none;
+}
+
 #container {
 	width:1000px;
 	margin:auto;
@@ -25,17 +29,22 @@ body{
 	border-radius:5px;
 	height:600px;
 }
+#container > table{
+	width:100%;
+	height: 100%;
+}
 
 /* ===================================
  * ============  HEADER   ============
  * =================================== */
 
 #div_header{
-	background-color:#666666;
+	background-color:#333333;
 }
 
 #header{
 	height:100px;
+	color:white;
 }
 #header td{
 	min-width:100px;
@@ -66,22 +75,22 @@ body{
 }
 
 #header_menu li>a{
-	line-height:30px;
-	width:100%;
+	display:block;
+	/*width:100%;*/
 	padding:7px;
-	color:#0070FF;
 }
-#header_menu li:hover{
-	background-color:#FFF;
-}
-
 #slogan{
-	color:white;
+	
 	font-weight:bold;
 	font-size:30px;
 }
 
-
+#logo{
+	text-align:center;
+}
+#HUX{
+	font-size:1.2em;
+}
 /* ===================================
  * =============  MENU   =============
  * =================================== */
@@ -89,8 +98,10 @@ body{
 	width:150px;
 	background-color:#EEE;
 	border-radius:5px;
-	padding:0;
 	vertical-align:top;
+}
+#menu > ul {
+	margin-top:0;
 }
 
 .menu>ul{
@@ -99,14 +110,26 @@ body{
 
 .menu li{
 	list-style:none;
-	margin:0;
-	padding:0;
+}
+
+.menu li:hover{
+	background-color:#FFF;
 }
 
 .menu li > a{
 	text-decoration:none;
 	height:100%;
-	width:100%
+}
+
+#menu li{
+	border-bottom:1px solid #DDDDDD;
+}
+
+#menu li a{
+	/*padding-left:15px;*/
+	padding:12px 0 12px 15px;
+	display:block;
+	display:block;
 }
 
 #menu .menu_title{
@@ -125,19 +148,18 @@ body{
 .content{
 	background-color:#EEE;
 	border-radius:5px;
-	min-width:800px;
 	padding:20px 50px 20px 50px;
 	vertical-align:top;
 }
 
-.note{
+.note, .warning{
 	font-size:1.1em;
 	color:green;
 	font-style: italic;
 	border: 1px solid;
 }
 
-h1{
+h1, a{
 	color: #0070ff;
 }
 
@@ -148,4 +170,13 @@ code{
 	background-color:#FFFFDD;
 	border-radius:3px;
 	border:1px solid;
+}
+
+/* ===================================
+ * ===========  FEATURE   ============
+ * =================================== */
+
+.feature_description td, .feature_description{
+	border-radius:2px;
+	border:solid 1px;
 }

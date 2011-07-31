@@ -100,27 +100,7 @@ HUX.HashMgr = {
 	},
 	
 	
-	/**
-	 * PrivateFunction: __hashStringToObject
-	 * creates the Object for hash
-	 * 
-	 * Parameters:
-	 * 	- *hash*: {String} the location hash to convert
-	 * 
-	 * Returns: 
-	 * 	- the object of this type : {"[sTarget]":"[url]", ...}
-	 */
-	__hashStringToObject: function(hash){
-		var new_hashObj = {};
-		var pattern = new RegExp("[#,]!([^=,]+)=([^=,]+)", "g");
-		
-		while( ( resExec = (pattern.exec(hash)) ) !== null){
-			sTarget = resExec[1];
-			url = resExec[2];
-			new_hashObj[sTarget] = url;
-		}
-		return new_hashObj;
-	},
+	
 	
 	
 	// =============================
@@ -164,7 +144,7 @@ HUX.HashMgr = {
 		// we look for anchors whose href beginns with "#!" 
 		if(document.evaluate !== undefined){
 			prefixedTN = HUX.Selector.prefixTagName("a");
-			HUX.Selector.evaluate(".//"+prefixedTN+"[starts-with(@href, '#!')]", context, fnEach);
+			HUX.Selector.evaluate("./descendant-or-self::"+prefixedTN+"[starts-with(@href, '#!')]", context, fnEach);
 		}
 		else{
 			fnFilter = function(el){  
@@ -235,6 +215,49 @@ HUX.HashMgr = {
 		location.hash += ( srcElement.hash || srcElement.getAttribute("href") ).replace(/^#/,",");
 		HUX.Compat.preventDefault(ev);
 	},
+	
+	
+	/**
+	 * PrivateFunction: __hashStringToObject
+	 * creates the Object for hash
+	 * 
+	 * Parameters:
+	 * 	- *hash*: {String} the location hash to convert
+	 * 
+	 * Returns: 
+	 * 	- the object of this type : {"[sTarget]":"[url]", ...}
+	 */
+	__hashStringToObject: function(hash){
+		var new_hashObj = {}, resExec, sTarget, url, redundancy = false;
+		var pattern = new RegExp("[#,]!([^=,]+)=([^=,]+)", "g");
+		
+		while( ( resExec = (pattern.exec(hash)) ) !== null){
+			sTarget = resExec[1];
+			url = resExec[2];
+			// if the 
+			if(new_hashObj[sTarget] === url){
+				redundancy = true;
+				break;
+			}
+			new_hashObj[sTarget] = url;
+			
+		}
+		// if there is redundancy of pairs in the Hash
+		if(redundancy){
+			// we erase all pairs after the first redundant pair
+			// so we get the default content for each of them
+			var erase = false;
+			for(var t in new_hashObj){
+				if(erase)
+					delete new_hashObj[t];
+				else if(t === sTarget && new_hashObj[t] === url){
+					erase = true;
+				}
+			}
+		}
+		return new_hashObj;
+	},
+	
 	/**
 	 * Function: updateHashSilently
 	 * update the hash silently, i.e. without triggering hashchange event
@@ -269,30 +292,42 @@ HUX.HashMgr = {
 	 * 	- *keepPrevHash*: {Boolean} set to true if used by init, false otherwise.
 	 */
 	handler: function(ev, keepPrevHash){
+		// what we name a pair here 
+		// is a pair "TARGET ID" : "URL" that you can find in the hash
 		var hash = location.hash.toString();
-		var resExec, sTarget, target, url, hash_found, sHash = "#";
+		var resExec, sTarget, target, url, url_found, sHash = "#";
+		// new_hashObj is the Set of Pairs we get with the current Hash
 		var new_hashObj = this.__hashStringToObject(hash);
 		// we do all XHR asked through location.hash
 		for(sTarget in new_hashObj){
+			// we look for the target
 			target = document.getElementById(sTarget);
+			// we get the new URL
 			url = new_hashObj[sTarget];
-			hash_found = this.__hashObj[sTarget];
-			if(target!== null && url !== "__default"){ // if the URL given is __default, we load the default content in the target element  
+			// we look for a url in the old hashObj
+			url_found = this.__hashObj[sTarget];
+			
+			if(target!== null && url !== "__default"){ // if the target does not exists, or if the given URL is __default, we load the default content in the target element  
 				// we fill a string which will be the new location.hash
 				sHash += '!'+sTarget+'='+url+',';
-				if(!hash_found || hash_found !== url){
-					if(!hash_found){
+				if(!url_found || url_found !== url){
+					if(!url_found){
 						this.__default_content[sTarget] = target.cloneNode(true);
 					}
 					this.load(target, url);
 				}
-				
 				delete this.__hashObj[sTarget]; // later, we will inject the default content in the remaining elements
+				
+				// when the user entered a pair that is already present in the current location.hash
+				// we break the loop, in order to load the default content for each next pair
+				/*if(url_found === url){
+					break;
+				}*/
 			}
 			else if(url === "__default")
 				delete new_hashObj[sTarget];
 		}
-		// for each element remaining in __hashObj, we inject the default content in it
+		// for each targets remaining in __hashObj, we inject the default content in it
 		for(sTarget in this.__hashObj){
 			var replacement;
 			replacement = this.__default_content[sTarget];

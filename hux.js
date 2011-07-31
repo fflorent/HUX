@@ -187,11 +187,12 @@ var HUX = {
 		array.length = index;
 		return array.push.apply(array, rest);
 	},
+	
+	
 	// we cannot use document.importNode directly, since XML is case-sensitive, and HTML node names are uppercase. So it would require 
 	// 	that we write node names in uppercase in our Overlay XML document ... It is not natural, so we need to use something else.
 	// thanks to Anthony Holdener for this js implementation of importNode : 
 	// see http://www.alistapart.com/articles/crossbrowserscripting/
-	
 	/**
 	 * Function: importNode
 	 * a function similar to document.importNode, that import node from a document to the current HTML document. 
@@ -199,13 +200,14 @@ var HUX = {
 	 * 
 	 * Parameters:
 	 * 	- *node*: {Node} the node to import
-	 * 	- *allChildren*: {Boolean} set to true to also import its children
+	 * 	- *allChildren*: {Boolean} set to true to also import its children (default: true)
 	 * 
 	 * Returns:
 	 * 	- {Node} the imported node
 	 */
 	importNode: function(node, allChildren) {
 		/* find the node type to import */
+		allChildren = (allChildren === undefined || allChildren); // by default, allChildren=true
 		switch (node.nodeType) {
 			case document.ELEMENT_NODE:
 				/* create a new element */
@@ -631,10 +633,14 @@ var HUX = {
 			DOMContent = this.Inject.htmltodom(content, target);
 		else if(content.nodeType){ // if content is a node : 
 			if(content.nodeType === document.DOCUMENT_NODE){ // if the node is an XML Document
-				DOMContent = content;
+				var arrContents = [];
+				HUX.foreach(content.childNodes, function(c){
+					arrContents.push( HUX.importNode(c) );
+				});
+				DOMContent = this.Inject.injectIntoDocFrag( arrContents );
 			}
 			else
-				DOMContent = this.Inject.injectIntoDocFrag( [ content ] ); // we create a single element Array
+				DOMContent = this.Inject.injectIntoDocFrag( [ HUX.importNode(content) ] ); // we create a single imported element Array
 		}
 		else if(content.length !== undefined){ // if the content is enumerable and is not a node
 			DOMContent = this.Inject.injectIntoDocFrag( content );
@@ -721,7 +727,7 @@ var HUX = {
 			prefixedTN = this.prefixTagName(tagName);
 			if(typeof document.evaluate !== "undefined"){
 				sAttrXP = attrs.join(" or @"); // sAttrXP = "data-attr OR @data-hux-attr OR @hux:attr"
-				xpath = ".//"+prefixedTN+"[@"+sAttrXP+"]";
+				xpath = "./descendant-or-self::"+prefixedTN+"[@"+sAttrXP+"]";
 				return this.evaluate(xpath, context, fnEach);
 			}
 			else{
@@ -758,7 +764,7 @@ var HUX = {
 		 * 
 		 * NOTES: 
 		 *  - we use document.evaluate instead of document.querySelectorAll because of the non-implementation of namespace gestion in CSS3 selectors 
-		 *  - if you use a context, your xpath expression may begin with a dot (example : ".//p" for selecting all paragraphs in the context)
+		 *  - if you use a context, your xpath expression may begin with a dot (example : "./descendant-or-self::p" for selecting all paragraphs in the context)
 		 *  - See Also prefixTagName for convenience with the tagName of the elements
 		 * 
 		 * Parameters:
@@ -1295,27 +1301,7 @@ HUX.HashMgr = {
 	},
 	
 	
-	/**
-	 * PrivateFunction: __hashStringToObject
-	 * creates the Object for hash
-	 * 
-	 * Parameters:
-	 * 	- *hash*: {String} the location hash to convert
-	 * 
-	 * Returns: 
-	 * 	- the object of this type : {"[sTarget]":"[url]", ...}
-	 */
-	__hashStringToObject: function(hash){
-		var new_hashObj = {};
-		var pattern = new RegExp("[#,]!([^=,]+)=([^=,]+)", "g");
-		
-		while( ( resExec = (pattern.exec(hash)) ) !== null){
-			sTarget = resExec[1];
-			url = resExec[2];
-			new_hashObj[sTarget] = url;
-		}
-		return new_hashObj;
-	},
+	
 	
 	
 	// =============================
@@ -1359,7 +1345,7 @@ HUX.HashMgr = {
 		// we look for anchors whose href beginns with "#!" 
 		if(document.evaluate !== undefined){
 			prefixedTN = HUX.Selector.prefixTagName("a");
-			HUX.Selector.evaluate(".//"+prefixedTN+"[starts-with(@href, '#!')]", context, fnEach);
+			HUX.Selector.evaluate("./descendant-or-self::"+prefixedTN+"[starts-with(@href, '#!')]", context, fnEach);
 		}
 		else{
 			fnFilter = function(el){  
@@ -1430,6 +1416,49 @@ HUX.HashMgr = {
 		location.hash += ( srcElement.hash || srcElement.getAttribute("href") ).replace(/^#/,",");
 		HUX.Compat.preventDefault(ev);
 	},
+	
+	
+	/**
+	 * PrivateFunction: __hashStringToObject
+	 * creates the Object for hash
+	 * 
+	 * Parameters:
+	 * 	- *hash*: {String} the location hash to convert
+	 * 
+	 * Returns: 
+	 * 	- the object of this type : {"[sTarget]":"[url]", ...}
+	 */
+	__hashStringToObject: function(hash){
+		var new_hashObj = {}, resExec, sTarget, url, redundancy = false;
+		var pattern = new RegExp("[#,]!([^=,]+)=([^=,]+)", "g");
+		
+		while( ( resExec = (pattern.exec(hash)) ) !== null){
+			sTarget = resExec[1];
+			url = resExec[2];
+			// if the 
+			if(new_hashObj[sTarget] === url){
+				redundancy = true;
+				break;
+			}
+			new_hashObj[sTarget] = url;
+			
+		}
+		// if there is redundancy of pairs in the Hash
+		if(redundancy){
+			// we erase all pairs after the first redundant pair
+			// so we get the default content for each of them
+			var erase = false;
+			for(var t in new_hashObj){
+				if(erase)
+					delete new_hashObj[t];
+				else if(t === sTarget && new_hashObj[t] === url){
+					erase = true;
+				}
+			}
+		}
+		return new_hashObj;
+	},
+	
 	/**
 	 * Function: updateHashSilently
 	 * update the hash silently, i.e. without triggering hashchange event
@@ -1464,30 +1493,42 @@ HUX.HashMgr = {
 	 * 	- *keepPrevHash*: {Boolean} set to true if used by init, false otherwise.
 	 */
 	handler: function(ev, keepPrevHash){
+		// what we name a pair here 
+		// is a pair "TARGET ID" : "URL" that you can find in the hash
 		var hash = location.hash.toString();
-		var resExec, sTarget, target, url, hash_found, sHash = "#";
+		var resExec, sTarget, target, url, url_found, sHash = "#";
+		// new_hashObj is the Set of Pairs we get with the current Hash
 		var new_hashObj = this.__hashStringToObject(hash);
 		// we do all XHR asked through location.hash
 		for(sTarget in new_hashObj){
+			// we look for the target
 			target = document.getElementById(sTarget);
+			// we get the new URL
 			url = new_hashObj[sTarget];
-			hash_found = this.__hashObj[sTarget];
-			if(target!== null && url !== "__default"){ // if the URL given is __default, we load the default content in the target element  
+			// we look for a url in the old hashObj
+			url_found = this.__hashObj[sTarget];
+			
+			if(target!== null && url !== "__default"){ // if the target does not exists, or if the given URL is __default, we load the default content in the target element  
 				// we fill a string which will be the new location.hash
 				sHash += '!'+sTarget+'='+url+',';
-				if(!hash_found || hash_found !== url){
-					if(!hash_found){
+				if(!url_found || url_found !== url){
+					if(!url_found){
 						this.__default_content[sTarget] = target.cloneNode(true);
 					}
 					this.load(target, url);
 				}
-				
 				delete this.__hashObj[sTarget]; // later, we will inject the default content in the remaining elements
+				
+				// when the user entered a pair that is already present in the current location.hash
+				// we break the loop, in order to load the default content for each next pair
+				/*if(url_found === url){
+					break;
+				}*/
 			}
 			else if(url === "__default")
 				delete new_hashObj[sTarget];
 		}
-		// for each element remaining in __hashObj, we inject the default content in it
+		// for each targets remaining in __hashObj, we inject the default content in it
 		for(sTarget in this.__hashObj){
 			var replacement;
 			replacement = this.__default_content[sTarget];

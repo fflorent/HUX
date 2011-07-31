@@ -186,11 +186,12 @@ var HUX = {
 		array.length = index;
 		return array.push.apply(array, rest);
 	},
+	
+	
 	// we cannot use document.importNode directly, since XML is case-sensitive, and HTML node names are uppercase. So it would require 
 	// 	that we write node names in uppercase in our Overlay XML document ... It is not natural, so we need to use something else.
 	// thanks to Anthony Holdener for this js implementation of importNode : 
 	// see http://www.alistapart.com/articles/crossbrowserscripting/
-	
 	/**
 	 * Function: importNode
 	 * a function similar to document.importNode, that import node from a document to the current HTML document. 
@@ -198,13 +199,14 @@ var HUX = {
 	 * 
 	 * Parameters:
 	 * 	- *node*: {Node} the node to import
-	 * 	- *allChildren*: {Boolean} set to true to also import its children
+	 * 	- *allChildren*: {Boolean} set to true to also import its children (default: true)
 	 * 
 	 * Returns:
 	 * 	- {Node} the imported node
 	 */
 	importNode: function(node, allChildren) {
 		/* find the node type to import */
+		allChildren = (allChildren === undefined || allChildren); // by default, allChildren=true
 		switch (node.nodeType) {
 			case document.ELEMENT_NODE:
 				/* create a new element */
@@ -630,10 +632,14 @@ var HUX = {
 			DOMContent = this.Inject.htmltodom(content, target);
 		else if(content.nodeType){ // if content is a node : 
 			if(content.nodeType === document.DOCUMENT_NODE){ // if the node is an XML Document
-				DOMContent = content;
+				var arrContents = [];
+				HUX.foreach(content.childNodes, function(c){
+					arrContents.push( HUX.importNode(c) );
+				});
+				DOMContent = this.Inject.injectIntoDocFrag( arrContents );
 			}
 			else
-				DOMContent = this.Inject.injectIntoDocFrag( [ content ] ); // we create a single element Array
+				DOMContent = this.Inject.injectIntoDocFrag( [ HUX.importNode(content) ] ); // we create a single imported element Array
 		}
 		else if(content.length !== undefined){ // if the content is enumerable and is not a node
 			DOMContent = this.Inject.injectIntoDocFrag( content );
@@ -720,7 +726,7 @@ var HUX = {
 			prefixedTN = this.prefixTagName(tagName);
 			if(typeof document.evaluate !== "undefined"){
 				sAttrXP = attrs.join(" or @"); // sAttrXP = "data-attr OR @data-hux-attr OR @hux:attr"
-				xpath = ".//"+prefixedTN+"[@"+sAttrXP+"]";
+				xpath = "./descendant-or-self::"+prefixedTN+"[@"+sAttrXP+"]";
 				return this.evaluate(xpath, context, fnEach);
 			}
 			else{
@@ -757,7 +763,7 @@ var HUX = {
 		 * 
 		 * NOTES: 
 		 *  - we use document.evaluate instead of document.querySelectorAll because of the non-implementation of namespace gestion in CSS3 selectors 
-		 *  - if you use a context, your xpath expression may begin with a dot (example : ".//p" for selecting all paragraphs in the context)
+		 *  - if you use a context, your xpath expression may begin with a dot (example : "./descendant-or-self::p" for selecting all paragraphs in the context)
 		 *  - See Also prefixTagName for convenience with the tagName of the elements
 		 * 
 		 * Parameters:

@@ -31,12 +31,11 @@
 	 */
 	HUX.StageClassMgr = hscm = {
 		delayEnd:30, // needed for transitions 
-		/**
-		 * Property: classNames
-		 * {HashMap<String, String>} gives a class name for each HUX event
-		 */
+		reErase: null,
+		
 		classNames:{
 			/* map : [event] : [className] */
+			"prepareLoading":"hux_initLoading",
 			"loading":"hux_loading",
 			"requestError":"hux_error",
 			"beforeInject":"hux_initLoaded",
@@ -47,11 +46,17 @@
 		 * inits the module
 		 */
 		init: function(){
-			var evName;
+			var evName, tabClasses = [];
 			for(evName in this.classNames){
 				HUX.HUXEvents.bindGlobal(evName, hscm.eventHandler);
 			}
+			for(var c in this.classNames)
+				tabClasses.push(this.classNames[c]);
+			// RegExp to delete our classNames
+			this.reErase = new RegExp("("+tabClasses.join("|")+")\\s*", 'g');
+			
 		},
+ 
 		/**
 		 * Function: eventHandler
 		 * handles any event given in classNames.
@@ -60,19 +65,43 @@
 		 * Parameters : 
 		 * 	- *ev* : {HUX Event Object}
 		 */
-		eventHandler: function(ev){
+		eventHandler: function(ev, callback){
 			var timeout = 0;
 			var target = ev.target || document.body;
-			if(ev.type === "afterInject")
-				timeout = hscm.delayEnd;
+			// if an animation is used, we delay the attribution of the hux_loaded class 
+			// in order to permit applying the CSS rules for .hux_initLoaded
+			// if(["afterInject", 'loading'].indexOf(ev.type) >= 0 )
+			// timeout = hscm.delayEnd * (["afterInject"].indexOf(ev.type)+1);
 			// NOTE : IE does not implement extra arguments for setTimeout, so we use an anonymous function 
 			// to send ev.target and ev.type
 			function run(){
-				hscm.setHuxClassName(target, ev.type);
+				// if the target is in transition
+				/*if(target.inTransition){
+					
+					// we run callback when the transition is ended
+					target.addEventListener(hscm.sTransitionEnd, function f1(){
+						target.removeEventListener(hscm.sTransitionEnd, f1, false);
+						callback();
+						hscm.setHuxClassName(target, ev.type);
+					}, false);
+					// a bit dirty ... 
+					// we do not run callback for now ...
+					ev.preventDefault();
+				}
+				else*/
+					hscm.setHuxClassName(target, ev.type);
+				// if a transition is being proceeded
+				/*if(!target.inTransition && hscm.getStyle(target, hscm.cssPrefix+"transition-duration")){
+					target.inTransition = true;
+					target.addEventListener(hscm.sTransitionEnd, function f2(){
+						target.removeEventListener(hscm.sTransitionEnd, f2, false);
+						target.inTransition = false;
+					}, false);
+				}*/
 			}
-			if(timeout > 0)
+			/*if(timeout > 0)
 				setTimeout(run, timeout);
-			else
+			else*/
 				run();
 		},
 		/**
@@ -81,10 +110,10 @@
 		 * 
 		 * Parameters :
 		 * 	- *el* : {Element} the target element
-		 * 	- *key* : {String} the event name. 
+		 * 	- *evName* : {String} the event name. 
 		 */
-		setHuxClassName: function(el, key){
-			el.className = hscm.classNames[key] + " " + el.className.replace(/hux_[^ ]+[ ]*/g, ""); // we push the new className and erase any old HUX class Name 
+		setHuxClassName: function(el, evName){
+			el.className = hscm.classNames[evName] + " " + el.className.replace(hscm.reErase, ""); // we push the new className and erase any old HUX class Name 
 		}
 	};
 	hscm.init(); // we launch the module directly

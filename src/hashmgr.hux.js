@@ -36,7 +36,7 @@ HUX.HashMgr = {
 	 * PrivateProperty: __hashObj
 	 * {HashMap<String, String>} Split object of the current Hash. Matches each id with the URL of the content loaded.
 	 */
-	__hashObj:{},
+	__hashObj:new HUX.PairManager(),
 	// the previous hash (private)
 	__prev_hash:location.hash,
 	// counter for exceptions
@@ -216,48 +216,6 @@ HUX.HashMgr = {
 		HUX.Compat.preventDefault(ev);
 	},
 	
-	
-	/**
-	 * PrivateFunction: __hashStringToObject
-	 * creates the Object for hash
-	 * 
-	 * Parameters:
-	 * 	- *hash*: {String} the location hash to convert
-	 * 
-	 * Returns: 
-	 * 	- the object of this type : {"[sTarget]":"[url]", ...}
-	 */
-	__hashStringToObject: function(hash){
-		var new_hashObj = {}, resExec, sTarget, url, redundancy = false;
-		var pattern = new RegExp("[#,]!([^=,]+)=([^=,]+)", "g");
-		
-		while( ( resExec = (pattern.exec(hash)) ) !== null){
-			sTarget = resExec[1];
-			url = resExec[2];
-			// if the 
-			if(new_hashObj[sTarget] === url){
-				redundancy = true;
-				break;
-			}
-			new_hashObj[sTarget] = url;
-			
-		}
-		// if there is redundancy of pairs in the Hash
-		if(redundancy){
-			// we erase all pairs after the first redundant pair
-			// so we get the default content for each of them
-			var erase = false;
-			for(var t in new_hashObj){
-				if(erase)
-					delete new_hashObj[t];
-				else if(t === sTarget && new_hashObj[t] === url){
-					erase = true;
-				}
-			}
-		}
-		return new_hashObj;
-	},
-	
 	/**
 	 * Function: updateHashSilently
 	 * update the hash silently, i.e. without triggering hashchange event
@@ -295,55 +253,46 @@ HUX.HashMgr = {
 		// what we name a pair here 
 		// is a pair "TARGET ID" : "URL" that you can find in the hash
 		var hash = location.hash.toString();
-		var resExec, sTarget, target, url, url_found, sHash = "#";
-		// new_hashObj is the Set of Pairs we get with the current Hash
-		var new_hashObj = this.__hashStringToObject(hash);
-		// we do all XHR asked through location.hash
-		for(sTarget in new_hashObj){
-			// we look for the target
-			target = document.getElementById(sTarget);
-			// we get the new URL
-			url = new_hashObj[sTarget];
-			// we look for a url in the old hashObj
-			url_found = this.__hashObj[sTarget];
-			
-			if(target!== null && url !== "__default"){ // if the target does not exists, or if the given URL is __default, we load the default content in the target element  
-				// we fill a string which will be the new location.hash
-				sHash += '!'+sTarget+'='+url+',';
-				if(!url_found || url_found !== url){
-					if(!url_found){
-						this.__default_content[sTarget] = target.cloneNode(true);
-					}
-					this.load(target, url);
-				}
-				delete this.__hashObj[sTarget]; // later, we will inject the default content in the remaining elements
-				
-				// when the user entered a pair that is already present in the current location.hash
-				// we break the loop, in order to load the default content for each next pair
-				/*if(url_found === url){
-					break;
-				}*/
-			}
-			else if(url === "__default")
-				delete new_hashObj[sTarget];
-		}
-		// for each targets remaining in __hashObj, we inject the default content in it
-		for(sTarget in this.__hashObj){
-			var replacement;
-			replacement = this.__default_content[sTarget];
-			if(replacement !== undefined){
-				target = document.getElementById(sTarget);
+		var newPM = HUX.PairManager.split(hash, /[#,]!([^=,]+)=([^=,]+)/g), self = this;
+		this.__hashObj.compairWith(newPM, {
+			onAdd: function(added){
+				var sTarget = added.target, target = document.getElementById(sTarget);
 				if(target !== null){
-					target.parentNode.insertBefore(replacement, target);
-					target.parentNode.removeChild(target);
+					self.__default_content[sTarget] = target.cloneNode(true).childNodes;
+					self.load(target, added.url);
+					return true;
 				}
+				else{
+					return false;
+				}
+			},
+			onReplace: function(added){
+				var target = document.getElementById(added.target);
+				if(target !== null){
+					self.load(target, added.url);
+					return true;
+				}
+				else
+					return false;
+				},
+			onDelete: function(deleted){
+				var sTarget = deleted.target, replacement = self.__default_content[sTarget];
+				if(replacement !== undefined){
+					var target = document.getElementById(sTarget);
+					if(target !== null){
+						HUX.HUXEvents.trigger("loading", {target: target });
+						HUX.inject(target, "replace", replacement);
+						return true;
+					}
+				}
+				return false;
 			}
-		}
-		
-		// we update location.hash
-		this.updateHashSilently( sHash.replace(/,$/, ""), keepPrevHash);
+			
+		});
+		var sHash = "#"+this.__hashObj.map(function(e){return "!"+e.target+"="+e.url;}).join(",");
+		this.updateHashSilently(sHash , keepPrevHash);
 		HUX.HashMgr.IFrameHack.updateIFrame(); // only if IFrameHack enabled
-		this.__hashObj = new_hashObj;
+		/*this.__hashObj = new_hashObj;*/
 	},
 	/*handler:function(){
 		return HUX.HashMgr.__handler.apply(HUX.HashMgr, arguments);

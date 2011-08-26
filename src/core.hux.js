@@ -140,9 +140,9 @@ var HUX = {
 	 * > 		alert(el.tagName); 
 	 * > 	});
 	 */
-	foreach: function(array, fn){
+	foreach: Array.forEach || function(array, fn, t){
 		for(var i = 0; i < array.length; i++)
-			fn(array[i]); // using call because of IE which lose "this" reference
+			fn.call(t||this, array[i], i, array);
 	},
 	/**
 	 * Function: toArray
@@ -248,7 +248,8 @@ var HUX = {
 			"beforeEmpty":{"global":[]},
 			"requestError":{"global":[]},
 			"afterInject":{"global":[]},
-			"loading":{"global":[]}
+			"loading":{"global":[]},
+			"prepareLoading":{"global":[]}
 		},
 
 		__addListener: function(key, evName, fn){
@@ -333,7 +334,7 @@ var HUX = {
 		 * 	- *event* : {HUX Event Object} object with information about the event 
 		 * NOTE : if the event has a target, put it as event.target
 		 */
-		trigger: function(evName, event){
+		trigger: function(evName, event, callback){
 			try{
 				var lsters = [], tid = (event.target?event.target.id : null), arrEv = this.__arrEv;
 				// we merge the listeners for the specific element and the listeners for "global"
@@ -343,11 +344,20 @@ var HUX = {
 				lsters = lsters.concat( this.__getListeners(evName, "global") );
 				
 				event.type = evName;
+				
+				// set preventDefault method
+				event.defaultPrevented = false;
+				event.preventDefault = function(){
+					event.defaultPrevented = true;
+				};
+				
+				// we trigger all the events
 				HUX.foreach(lsters, function(fn){
-					var ret = fn.call(window, event);
-					if(ret === false)
-						throw "trigger stoped";
+					var ret = fn.call(window, event, callback);
 				});
+				// is the event is not prevented, we run the callback function
+				if(!event.defaultPrevented && callback !== undefined)
+					callback();
 			}
 			catch(ex){
 				HUX.logError(ex);
@@ -417,9 +427,7 @@ var HUX = {
 		 */
 		__proceed: function(target, method, DOMContent){
 			var aInserted = this.callFillingMethod(target, method, DOMContent);
-			HUX.HUXEvents.trigger("afterInject", {target: target || document.body, children: aInserted});
 			return aInserted;
-			
 		},
 		__checkTarget: function(target, methodName){
 			if(!target)
@@ -430,7 +438,6 @@ var HUX = {
 				this.__checkTarget( target, "prepend")
 				DOMContent = this.forceDocumentFragment( DOMContent );
 				if(target.childNodes.length > 0){ // we use InsertBefore
-					HUX.HUXEvents.trigger("beforeInject", {target: target, children: DOMContent.childNodes});
 					firstChild = target.firstChild;
 					target.insertBefore(DOMContent, firstChild);
 					return DOMContent.childNodes;
@@ -445,7 +452,6 @@ var HUX = {
 				if(DOMContent.nodeType !== document.DOCUMENT_FRAGMENT_NODE)
 					throw new TypeError("append expects a DocumentFragment");
 				this.__checkTarget(target, "append");
-				HUX.HUXEvents.trigger("beforeInject", {target: target, children: DOMContent.childNodes});
 				target.appendChild(DOMContent);
 				aInserted = target.childNodes;
 				return aInserted;
@@ -648,7 +654,18 @@ var HUX = {
 			throw new TypeError("content : invalid argument");
 		if(! method) // if method === null, default is REPLACEMENT
 			method = "replace";
-		this.Inject.__proceed.call(this.Inject, target, method, DOMContent); 
+		
+		
+		HUX.HUXEvents.trigger("beforeInject", {target: target, children: DOMContent.childNodes}, function(){
+			var aInserted = [];
+			try{
+				aInserted = HUX.Inject.__proceed(target, method, DOMContent); 
+			}
+			finally{
+				HUX.HUXEvents.trigger("afterInject", {target: target || document.body, children: aInserted});
+			}
+		});
+		
 	},
 	/**
 	 * Namespace: Selector
@@ -826,7 +843,7 @@ var HUX = {
 					ret.push(el); // if the filter accepted the condition, we add the current element in the results
 					fnEach(el);   // we call the for-each function given by the user
 				}
-			});
+			}, this);
 			return ret;
 		}
 	},
@@ -841,6 +858,8 @@ var HUX = {
 				throw new TypeError("invalid arguments");
 			try{
 				var data = null, xhr;
+				// mainly for stageclassmgr
+				HUX.HUXEvents.trigger("prepareLoading", {target: (opt.target || document.body) });
 				// default value for opt.async is true
 				if(opt.async === undefined)
 					opt.async = true;
@@ -857,11 +876,11 @@ var HUX = {
 					xhr.open(opt.method, opt.url, opt.async, opt.username, opt.password);
 				else
 					xhr.open(opt.method, opt.url, opt.async);
-				// we trigger the event "loading"
-				HUX.HUXEvents.trigger("loading", {target:opt.target || document.body});
 				// 
 				this.setReadystatechange(xhr, opt.filling, opt.target);
 				xhr.setRequestHeader("Content-Type", opt.contentType || "application/x-www-form-urlencoded");
+				// we trigger the event "loading"
+				HUX.HUXEvents.trigger("loading", {target: (opt.target || document.body) });
 				xhr.send(data);
 			}
 			catch(ex){
@@ -1098,6 +1117,28 @@ var HUX = {
 			else // IE
 				event.cancelBubble = event.returnValue = false;
 		}
+	},
+	/**
+	 * Namespace: Browser
+	 * information about the used browser
+	 */
+	Browser: {
+		layout_engine: /(Gecko|AppleWebKit|Presto|MSIE)\//.exec(navigator.userAgent)[1].replace("MSIE", "Trident"),
+		__prefixes: {"Gecko":"moz", "AppleWebKit":"webkit", "Presto":"o", "Trident":"ms"},
+		/**
+		 * Function: evtPrefix
+		 * returns the prefix for browser-specific events (like (webkit|o)transitionend for Webkit and Presto)
+		 */
+		evtPrefix: function(){
+			return this.__prefixes[this.layout_engine]; // example : moz
+		},
+		/**
+		 * Function: cssPrefix
+		 * returns the prefix for browser-specific css properties (like (-webkit-|-o-|-moz-)transition)
+		 */
+		cssPrefix: function(){
+			return "-"+this.evtPrefix()+"-"; // example : -moz-
+		},
 	}
 };
 

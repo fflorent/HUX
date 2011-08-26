@@ -1,18 +1,31 @@
-.hux_initLoaded {
-	opacity:0.1;
-	/*-moz-transform: opacity(0.1);
-	-webkit-transform: opacity(0.1);
-	-o-transform: opacity(0.1);*/
+/*.hux_prepareLoading{
+	opacity:1;
+}*/
+.hux_loading {
+	opacity:1;
 }
-.hux_loaded {
+.hux_tAppearInit{
+	opacity:0.5;
+}
+.hux_tAppear {
 	/*-moz-transform: opacity(1);
 	-webkit-transform: opacity(1);
 	-o-transform: opacity(1);*/
 	opacity:1;
-	-moz-transition: 1s opacity cubic-bezier(0.00,0.00,0.5,1.00);
-	-webkit-transition: 1s opacity cubic-bezier(0.00,0.00,0.5,1.00);
-	-o-transition: 1s opacity cubic-bezier(0.00,0.00,0.5,1.00);
-} 
+	-moz-transition: 0.5s opacity cubic-bezier(0.00,0.00,0.5,1.00);
+	-webkit-transition: 0.5s opacity cubic-bezier(0.00,0.00,0.5,1.00);
+	-o-transition: 0.5s opacity cubic-bezier(0.00,0.00,0.5,1.00);
+}
+
+.hux_tVanish{
+	opacity:0.5;
+	-moz-transition: 0.5s opacity cubic-bezier(0.00,0.00,0.5,1.00);
+	-webkit-transition: 0.5s opacity cubic-bezier(0.00,0.00,0.5,1.00);
+	-o-transition: 0.5s opacity cubic-bezier(0.00,0.00,0.5,1.00);
+}
+.hux_tVanish ~ .hux_transition{
+	display:none;
+}
 body{
 	background-color:#222222;
 	font-family:sans-serif;

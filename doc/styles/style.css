@@ -26,6 +26,61 @@
 .hux_tVanish ~ .hux_transition{
 	display:none;
 }
+
+
+.hux_tAppearInit#iview{ opacity:1; }
+
+.hux_tAppearInit#iview .photo{
+	-moz-transform: translate(-200px, 0);
+	-o-transform: translate(-200px, 0);
+	-webkit-transform: translate(-200px, 0);
+	opacity:0;
+	/*-moz-transform-origin: 0% 0%;
+	-o-transform-origin: 0% 0%;
+	-webkit-transform-origin: 0% 0%;*/
+}
+.hux_tAppear#iview .photo{
+	/*-moz-transform-origin: 0% 0%;
+	-o-transform-origin: 0% 0%;
+	-webkit-transform-origin: 0% 0%;*/
+	opacity:1;
+	-moz-transform: scale(1) translate(0, 0);
+	-o-transform: scale(1) translate(0, 0);
+	-webkit-transform: scale(1) translate(0, 0);
+	-moz-transition: 0.5s ease;
+	-o-transition: 0.5s ease;
+	-webkit-transition: 0.5s ease;
+}
+
+
+.hux_tVanishInit#iview .photo{
+	-moz-transform: translate(0, 0);
+	-o-transform: translate(0, 0);
+	-webkit-transform: translate(0, 0);
+	/*-moz-transform-origin: 0% 0%;
+	-o-transform-origin: 0% 0%;
+	-webkit-transform-origin: 0% 0%;*/
+}
+
+.hux_tVanish#iview{
+	/*opacity:1;*/
+	/*-moz-transform:translate(0);*/
+	-moz-transition: 0.5 ease;
+	-webkit-transition: 0.5 ease;
+	-o-transition: 0.5 ease;
+}
+.hux_tVanish#iview .photo{
+	opacity:0;
+	-moz-transform: translate(200px, 0px);
+	-o-transform:  translate(200px, 0px);
+	-webkit-transform: translate(200px, 0px);
+	-moz-transition: 0.5s ease;
+	-o-transition: 0.5s ease;
+	-webkit-transition: 0.5s ease;
+}
+
+
+
 body{
 	background-color:#222222;
 	font-family:sans-serif;
@@ -107,13 +162,13 @@ a{
 /* ===================================
  * =============  MENU   =============
  * =================================== */
-#menu{
+.body_menu{
 	width:150px;
 	background-color:#EEE;
 	border-radius:5px;
 	vertical-align:top;
 }
-#menu > ul {
+.body_menu > ul {
 	margin-top:0;
 }
 
@@ -134,18 +189,18 @@ a{
 	height:100%;
 }
 
-#menu li{
+.body_menu li{
 	border-bottom:1px solid #DDDDDD;
 }
 
-#menu li a{
+.body_menu li a{
 	/*padding-left:15px;*/
 	padding:12px 0 12px 15px;
 	display:block;
 	display:block;
 }
 
-#menu .menu_title{
+.menu_title{
 	background-color:#DDD;
 	text-align:center;
 	margin:0;
@@ -176,13 +231,19 @@ h1, a{
 	color: #0070ff;
 }
 
-.code{
+.code, .rendering{
 	padding:10px 10px;
 	margin-left:50px;
 	font-size: 12px;
-	background-color:#FFFFDD;
 	border-radius:3px;
 	border:1px solid;
+}
+.code{
+	background-color:#FFFFDD;
+}
+
+.rendering{
+	background-color:#FFDDFF;
 }
 
 /* ===================================

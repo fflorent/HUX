@@ -25,20 +25,60 @@ HUX.UrlMgr = {
 	OLD_CONTENT:1,
 	NEW_CONTENT:2,
 	pairs: null,
+	enabled: !!history.pushState,
+	pairsCallbacks: {
+		onAdd: function(added){
+			var sTarget = added.target, target = document.getElementById(sTarget), self = HUX.UrlMgr;
+			if(target !== null){
+				self.__default_contents[sTarget] = target.innerHTML;
+				return self.load(target, added.url);
+			}
+			else{
+				return false;
+			}
+		},
+		onReplace: function(added){
+			var target = document.getElementById(added.target), self = HUX.UrlMgr;
+			if(target !== null){
+				return self.load(target, added.url);
+			}
+			else
+				return false;
+		},
+		onDelete: function(deleted){
+			var sTarget = deleted.target, replacement = HUX.UrlMgr.__default_contents[sTarget];
+			if(replacement !== undefined){
+				var target = document.getElementById(sTarget);
+				if(target !== null){
+					HUX.HUXEvents.trigger("loading", {target: target });
+					HUX.inject(target, "replace", replacement);
+					return true;
+				}
+			}
+			return false;
+		}
+		
+	},
 	preventDefaultIfDisabled: false,
 	asyncReq: false,
 	state:  null,
+	__default_contents : {},
 	init: function(){
-		if(history.replaceState === undefined)
+		this.pairs = HUX.PairManager.split((location.pathname.match(/[^@]@(.*)/) || ["",""])[1], /([^=,]+)=([^=,]+)/g, this.pairsCallbacks);
+		if(! this.enabled )
 			return;
-		if(!this.getState() || ! (this.getState().HUXStates instanceof Array) ){
+		if(!this.getState() || ! ( (this.getState().HUXStates || null) instanceof Array) ){
 			this.initHUXState();
 		}
+		
 		HUX.addLiveListener( this );
-		this.pairs = new HUX.PairManager();
+		
 		this.pairs.toString = function(){
 			return "@"+this.map(function(a){ return a.target+"="+a.url; }).join();
 		};
+		if( this.pairs.toString() !== ( location.pathname.match(/@.*/)||["@"] )[0] ){
+			this.pushState({}, "", location.pathname.replace(/@.*/g, "") + this.pairs.toString());
+		}
 	},
 	listen: function(context){
 		var self = HUX.UrlMgr;
@@ -56,7 +96,7 @@ HUX.UrlMgr = {
 			HUX.UrlMgr.state = state;
 	},
 	load: function(target, url){
-                var opt = {
+		var opt = {
                         data:null,
                         url:url,
                         method:'get',
@@ -64,35 +104,20 @@ HUX.UrlMgr = {
                         filling:null, // use default option (replace)
                         target:target
                 };
-                HUX.xhr(opt);
-	},
-	split: function(target, url, str, pReplace){
-                
-		/*var split = [], sTarget, url;
-                var pattern = new RegExp("[#,]!([^=,]+)=([^=,]+)", "g");
-                while( ( resExec = (pattern.exec(str)) ) !== null){
-         	        sTarget = resExec[1];
-			if(sTarget !== target){
-                       		url = resExec[2];
-				split.addPair(target, url);
-			}
-			else if(pReplace !== undefined){
-				pReplace.value = true;
-			}
-	        }
-		split.push({target: target, url: url});
-                return split;*/
+		
+                var xhr = HUX.xhr(opt);
+		return xhr.status === 200;
 	},
 	getNewState: function(target, url){
 		var reExtract = new RegExp(location.pathname+".*");
-		var curState = location.href.match(reExtract)[0].replace();
+		var curState = location.href.match(reExtract)[0];
 		/*var split = this.split(target, url, curState);
 		split.push({target:target, url:url});*/
 
 		//var newState = curState.replace( /(@.*|$)/, "@"+split.map(function(a){return a.target+"="+a.url}).join() );
-		var replaced = this.pairs.addPair(target, url);
+		//var replaced = this.pairs.addPair(target, url);
 		//if(!replaced){
-		this.addObjectToState({target:target, content:document.getElementById(target).innerHTML, url:"", type:this.OLD_CONTENT});
+		
 		//}
 		var newState = curState.replace( /(@.*|$)/, this.pairs.toString());
 		return newState;
@@ -104,48 +129,15 @@ HUX.UrlMgr = {
 		history.replaceState(state, "", "");
 	},
 	onClick: function(event){
-		var pair = event.target.href.replace(/[^@]*@!?/, "").split("=");
+		var pair = HUX.Compat.getEventTarget(event).href.replace(/.*@!?/g, "").split("=");
 		var sTarget = pair[0], target = document.getElementById(sTarget);
-		var url = pair[1], self = this;
-		this.pairs.addPair(sTarget, url, {
-			onAdd: function(added){
-				var sTarget = added.target, target = document.getElementById(sTarget);
-				if(target !== null){
-					self.load(target, added.url);
-					return true;
-				}
-				else{
-					return false;
-				}
-			},
-			onReplace: function(added){
-				var target = document.getElementById(added.target);
-				if(target !== null){
-					self.load(target, added.url);
-					return true;
-				}
-				else
-					return false;
-				},
-			onDelete: function(deleted){
-				var sTarget = deleted.target, replacement = document.createElement("div");
-				if(replacement !== undefined){
-					var target = document.getElementById(sTarget);
-					if(target !== null){
-						HUX.HUXEvents.trigger("loading", {target: target });
-						HUX.inject(target, "replace", replacement);
-						return true;
-					}
-				}
-				return false;
-			}
-			
-		});
-		/*var currentTargetContent = target.innerHTML;*/
-		var newState = this.getNewState(sTarget, url);
-		/*this.load(target, url);*/
-		this.pushState({target: sTarget, content:target.innerHTML ,url:url, type:this.NEW_CONTENT}, "", newState);
+		var url = pair[1];
 		HUX.Compat.preventDefault(event);
+		this.addObjectToState({target:target.id, content:target.innerHTML, url:"", type:this.OLD_CONTENT});
+		this.pairs.addPair(sTarget, url, this.pairsCallbacks);
+		var newState = this.getNewState(sTarget, url);
+		this.pushState({target: sTarget, content:target.innerHTML ,url:url, type:this.NEW_CONTENT}, "", newState);
+		
 	},
 	pushState: function(obj, title, newState){
 		var state = {HUXStates: [obj]};
@@ -153,27 +145,34 @@ HUX.UrlMgr = {
 		history.pushState(state, title, newState);
 	},
 	addObjectToState: function(obj, title){
-		var state = this.getState() || {};
-		state.HUXStates = state.HUXStates.filter(function(el){return el.target !== obj.target;}).concat([obj]);
+		var state = this.getState();
+		if(!state)
+			throw new Error("state is null");
+		state.HUXStates = (state.HUXStates || []).filter(function(el){return el.target !== obj.target;}).concat([obj]);
 		history.replaceState(state, title, "");
 	},
 	onPopState: function(event){
 	//	console.log(arguments);
-		var state = event.state;
-		if(!state || state.level === undefined)
-			return;
-		var self = HUX.UrlMgr;
-		self.updateState( state );
-		var old_level = self.level;
-		self.level = state.level;
-		var type2load = old_level > self.level ? self.OLD_CONTENT : self.NEW_CONTENT;
-		HUX.foreach(state.HUXStates, function (info){
-			if(info.type === type2load){
-				var target = document.getElementById(info.target);
-				HUX.HUXEvents.trigger("loading", {target:  target});
-				HUX.inject(target, null, info.content);
-			}
-		}, this);
+		try{
+			var state = event.state;
+			if(!state || state.level === undefined)
+				return;
+			var self = HUX.UrlMgr;
+			self.updateState( state );
+			var old_level = self.level;
+			self.level = state.level;
+			var type2load = old_level > self.level ? self.OLD_CONTENT : self.NEW_CONTENT;
+			HUX.foreach(state.HUXStates, function (info){
+				if(info.type === type2load){
+					var target = document.getElementById(info.target);
+					HUX.HUXEvents.trigger("loading", {target:  target});
+					HUX.inject(target, "replace", info.content);
+				}
+			}, this);
+		}
+		catch(ex){
+			HUX.logError(ex);
+		}
 	}
 };
 HUX.Compat.addEventListener( window, "popstate", HUX.UrlMgr.onPopState );

@@ -548,10 +548,39 @@ var HUX = {
 		empty: function(parent){
 			var child;
 			HUX.HUXEvents.trigger("beforeEmpty", {target: parent});
+			
+			this.pauseMedias(parent);
+			/*if(window.Audio !== undefined){
+				HUX.foreach(parent.querySelectorAll("audio, video"), function(media){
+					media.pause();
+				});
+			}*/
 			while( (child=parent.firstChild) !== null ){
 				parent.removeChild(child);
+				delete child;
 			}
-		},	
+			
+		},
+		/**
+		 * Function: pauseMedias
+		 * Pause any media in parent. 
+		 * To be used before removing elements (since HTMLMediaElement specification says .
+		 * 
+		 * 
+		 */
+		pauseMedias: function(parent){
+			// we pause any HTMLMediaElement before emptying ( https://bugzilla.mozilla.org/show_bug.cgi?id=594748 )
+			if(window.Audio === undefined)
+				return;
+			if(parent.tagName in ["audio", "video"])
+				parent.pause();
+			if( parent.querySelectorAll ){
+				HUX.foreach(parent.querySelectorAll("audio, video"), function(media){
+					media.pause();
+				});
+			}
+			
+		},
 		/**
 		 * Function: getChildren
 		 * DEPRECATED: use <injectIntoDocFrag> instead
@@ -585,7 +614,10 @@ var HUX = {
 				// depending on the parentNode, the NodeList can remove nodes[ i ] once it is appended somewhere else
 				// so, we use cloneNode(true), even if it is less optimized
 				frag.appendChild( nodes[i].cloneNode(true) );
+				this.pauseMedias(nodes[i])
+				delete nodes[i];
 			}
+			delete nodes;
 			return frag;
 		},
 		
@@ -643,12 +675,14 @@ var HUX = {
 					arrContents.push( HUX.importNode(c) );
 				});
 				DOMContent = this.Inject.injectIntoDocFrag( arrContents );
+				delete arrContents;
 			}
 			else
 				DOMContent = this.Inject.injectIntoDocFrag( [ HUX.importNode(content) ] ); // we create a single imported element Array
 		}
 		else if(content.length !== undefined){ // if the content is enumerable and is not a node
 			DOMContent = this.Inject.injectIntoDocFrag( content );
+			delete content;
 		}
 		else
 			throw new TypeError("content : invalid argument");
@@ -877,11 +911,12 @@ var HUX = {
 				else
 					xhr.open(opt.method, opt.url, opt.async);
 				// 
-				this.setReadystatechange(xhr, opt.filling, opt.target);
+				this.setReadystatechange(xhr, opt.filling, opt.target, opt);
 				xhr.setRequestHeader("Content-Type", opt.contentType || "application/x-www-form-urlencoded");
 				// we trigger the event "loading"
 				HUX.HUXEvents.trigger("loading", {target: (opt.target || document.body) });
 				xhr.send(data);
+				return xhr;
 			}
 			catch(ex){
 				HUX.logError(ex); // 
@@ -895,19 +930,21 @@ var HUX = {
 		onSuccess: function(xhr, filling, target){
 			HUX.inject(target, filling, (xhr.responseXML && xhr.responseXML.documentElement)? xhr.responseXML : xhr.responseText);
 		},
-		onError: function(xhr){
-			HUX.HUXEvents.trigger("requestError", {xhr:xhr});
+		onError: function(xhr, filling, target){
+			HUX.HUXEvents.trigger("requestError", {xhr:xhr,filling:filling,target:target});
 		},
-		setReadystatechange: function(xhr, filling, target){
+		setReadystatechange: function(xhr, filling, target, opt){
 			try{
-				var self = this;
+				var self = this, 
+					onSuccess = opt.onSuccess || self.onSuccess,
+					onError = opt.onError || self.onError;
 				xhr.onreadystatechange = function(){
 					try{
 						if(xhr.readyState  === 4){
 							if(xhr.status  === 200) 
-								self.onSuccess(xhr, filling, target);
+								onSuccess(xhr, filling, target);
 							else 
-								self.onError(xhr);
+								onError(xhr, filling, target);
 						}
 					}
 					catch(ex){
@@ -937,6 +974,8 @@ var HUX = {
 	 *	- *opt.username* ; {String} the login (optional)
 	 * 	- *opt.password* : {String} the password (optional)
 	 *	- *opt.contentType* : {String} Content-Type Request Header (default = "application/x-www-form-urlencoded")
+	 * 	- *opt.onSuccess* : {Function} function to trigger if the request succeeds (optional)
+	 * 	- *opt.onError* : {Function} function to trigger if the request fails (optional)
 	 */
 	xhr:function(opt){
 		return this.XHR.proceed.apply(this.XHR, arguments);
@@ -1028,7 +1067,7 @@ var HUX = {
 		__fn_removeEventListener : (window.removeEventListener ? 'removeEventListener':'detachEvent'),
 		// does the event name have to be prefixed with 'on' ? (yes with attachEvent, no with addEventListener)
 		__prefix_eventListener: (window.addEventListener? '':'on'),
-		
+		__ie_listeners:{},
 		/**
 		 * Function: addEventListener
 		 * adds a DOM event listener to an element
@@ -1040,6 +1079,7 @@ var HUX = {
 		 * 
 		 * See Also:
 		 * 	- <removeEventListener>
+		 * 	- <addEventListenerOnce>
 		 * 	- <getEventTarget>
 		 * 	- <preventDefault>
 		 * 
@@ -1049,7 +1089,17 @@ var HUX = {
 		 */
 		addEventListener: function(target, evName, fn){
 			evName = this.__prefix_eventListener+evName;
-			return target[this.__fn_addEventListener](evName, fn, false);
+			var listener = fn;
+			if( document.addEventListener === undefined ){
+				// we set currentTarget for IE
+				// TODO : place evName in the index
+				this.__ie_listeners[fn] = listener = function(ev){
+					ev.currentTarget = window.event.currentTarget = target;
+					return fn.apply(this, arguments);
+				}
+			}
+			
+			return target[this.__fn_addEventListener](evName, listener, false);
 		},
 		
 		/**
@@ -1059,7 +1109,7 @@ var HUX = {
 		 * Parameters: 
 		 *	- *target* : {Element} the event target 
 		 *	- *evName* : {String} the name of the event
-		 *	- *fn* : {Function} the function to call when the event is triggered
+		 *	- *fn* : {Function} the listener function to remove
 		 * 
 		 * See Also:
 		 * 	- <addEventListener>
@@ -1069,10 +1119,32 @@ var HUX = {
 		 * 
 		 */
 		removeEventListener: function(target, evName, fn){
+			var listener = fn;
 			evName = this.__prefix_eventListener+evName;
-			return target[this.__fn_removeEventListener](evName, fn, false);
+			if(document.addEventListener === undefined){
+				listener = this.__ie_listeners[fn] || fn;
+				// we cannot delete this.__ie_listeners since other element may also be listened
+			}
+			return target[this.__fn_removeEventListener](evName, listener, false);
 		},
-		
+		/**
+		 * Function: addEventListenerOnce
+		 * adds an event listener and ensure that teh listener will be called only once
+		 * 
+		 * 
+		 * Parameters: 
+		 *	- *target* : {Element} the event target 
+		 *	- *evName* : {String} the name of the event
+		 *	- *fn* : {Function} the function to call when the event is triggered
+		 * 
+		 * See Also:
+		 * 	- <addEventListener>
+		 * 	- <removeEventListener>
+		 */
+		addEventListenerOnce: function(){
+			this.removeEventListener.apply(this, arguments);
+			this.addEventListener.apply(this, arguments);
+		},
 		/**
 		 * Function: getEventTarget
 		 * returns the target of the DOM event
@@ -1091,8 +1163,8 @@ var HUX = {
 		 * >	HUX.Compat.addEventListener(document.body, "click", liClick);
 		 * 	
 		 */
-		getEventTarget: function(ev){
-			return window.event === undefined ? ev.target : event.srcElement;
+		getEventTarget: function(event){
+			return event.currentTarget;
 		},
 		
 		/**
@@ -1123,7 +1195,7 @@ var HUX = {
 	 * information about the used browser
 	 */
 	Browser: {
-		layout_engine: /(Gecko|AppleWebKit|Presto|MSIE)\//.exec(navigator.userAgent)[1].replace("MSIE", "Trident"),
+		layout_engine: /(Gecko|AppleWebKit|Presto)\/|(MSIE) /.exec(navigator.userAgent)[0].replace(/(\/| )$/, "").replace("MSIE", "Trident"),
 		__prefixes: {"Gecko":"moz", "AppleWebKit":"webkit", "Presto":"o", "Trident":"ms"},
 		/**
 		 * Function: evtPrefix
@@ -1139,6 +1211,9 @@ var HUX = {
 		cssPrefix: function(){
 			return "-"+this.evtPrefix()+"-"; // example : -moz-
 		},
+		isOldMSIE: function(){
+			return /MSIE [0-8]/.test(navigator.userAgent);
+		}
 	}
 };
 
@@ -1157,6 +1232,7 @@ Function.prototype.hux_wrap = function(fn){
 	var __method = this;
 	return function(){
 		var a = [__method];
+		__method.args = arguments; // the original arguments are set as fnOrig.args
 		Array.prototype.push.apply(a, arguments);
 		return fn.apply(this, a);
 	};

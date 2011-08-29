@@ -25,12 +25,10 @@
 (function(){
 	var ht;
 	HUX.Transition = ht = {
+		enabled: false,
 		timeout:30,
 		sTransitionEnd:HUX.Browser.evtPrefix() !== "moz" ? HUX.Browser.evtPrefix()+"TransitionEnd" : "transitionend",
-		/**
-		 * Property: classNames
-		 * {HashMap<String, String>} gives a class name for each HUX event
-		 */
+
 		cssPrefix: HUX.Browser.cssPrefix(),
 		/**
 		* inspired from http://www.quirksmode.org/dom/getstyles.html
@@ -48,6 +46,7 @@
 				return null;
 		},
 		init: function(){
+			
 			var evName;
 			HUX.HUXEvents.bindGlobal("loading", ht.onLoading);
 		},
@@ -56,6 +55,7 @@
 			if( ht.hasClass(ev.target, "hux_transition") ){
 				ev.target.className = ev.target.className.replace(/\s*hux_tAppear\s*/g, "");
 				target = ev.target.cloneNode(true);
+				target.className += " hux_tVanishInit";
 				ev.target.parentNode.insertBefore(target, ev.target);
 				// this makes flush the style ...
 				ht.getStyle(target, "display");

@@ -43,7 +43,7 @@ HUX.HashMgr = {
 	__watcher_cpt_ex:0,
 	
 	// store the content by default (before having injected content with HUX)
-	__default_content:{},
+	__default_contents:{},
 	
 
 	
@@ -139,7 +139,7 @@ HUX.HashMgr = {
 	listen: function(context){
 		var fnFilter, prefixedTN, fnEach;
 		fnEach = function(el){
-			HUX.Compat.addEventListener(el, "click", HUX.HashMgr.onClick);
+			HUX.Compat.addEventListenerOnce(el, "click", HUX.HashMgr.onClick);
 		};
 		// we look for anchors whose href beginns with "#!" 
 		if(document.evaluate !== undefined){
@@ -258,7 +258,7 @@ HUX.HashMgr = {
 			onAdd: function(added){
 				var sTarget = added.target, target = document.getElementById(sTarget);
 				if(target !== null){
-					self.__default_content[sTarget] = target.cloneNode(true).childNodes;
+					self.__default_contents[sTarget] = target.innerHTML;
 					self.load(target, added.url);
 					return true;
 				}
@@ -276,7 +276,7 @@ HUX.HashMgr = {
 					return false;
 				},
 			onDelete: function(deleted){
-				var sTarget = deleted.target, replacement = self.__default_content[sTarget];
+				var sTarget = deleted.target, replacement = self.__default_contents[sTarget];
 				if(replacement !== undefined){
 					var target = document.getElementById(sTarget);
 					if(target !== null){

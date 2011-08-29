@@ -97,15 +97,6 @@ HUX.PairManager = function(){
 		else
 			throw new TypeError(index+" is not a valid index");
 	};
-	/*this.getLength = function(){
-		if(this.length || !this[0]) // normal case
-			return this.length;
-		// IE 7- is buggy with this.length because of the inheritance
-		// so lets vomit this happily ... :
-		var len = 0;
-		for(var len = 0; this[len] !== undefined; len++);
-		return len;
-	};*/
 	this.compairWith = function(other, callbacks){
 		if(! other instanceof HUX.PairManager)
 			throw new TypeError("the first argument is not a HUX.PairManager");
@@ -230,13 +221,15 @@ HUX.PairManager = function(){
 	PM.prototype.constructor = PM;
 })(HUX.PairManager);
 
-HUX.PairManager.split  = function(str, pattern){
+HUX.PairManager.split  = function(str, pattern, callbacks){
 	var resExec, sTarget, url, index, pm;
+	if(!pattern.global)
+		throw new TypeError("pattern must have the 'g' flag");
 	pm = new HUX.PairManager();
 	while( ( resExec = (pattern.exec(str)) ) !== null){
 		sTarget = resExec[1];
 		url = resExec[2];
-		index = pm.addPair(sTarget, url);
+		index = pm.addPair(sTarget, url, callbacks);
 	}
 	return pm;
 };

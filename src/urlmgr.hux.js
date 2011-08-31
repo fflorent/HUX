@@ -22,7 +22,9 @@
 HUX.UrlMgr = {
 	// history level
 	level:0,
+	// OLD_CONTENT corresponds to content that have been deleted. onPopState loads this type of content if the user goes back
 	OLD_CONTENT:1,
+	// NEW_CONTENT corresponds to content that have been added. onPopState loads this type of content if the user goes forward
 	NEW_CONTENT:2,
 	pairs: null,
 	enabled: !!history.pushState,
@@ -57,7 +59,6 @@ HUX.UrlMgr = {
 			}
 			return false;
 		}
-		
 	},
 	preventDefaultIfDisabled: false,
 	asyncReq: false,
@@ -70,7 +71,7 @@ HUX.UrlMgr = {
 		if(!this.getState() || ! ( (this.getState().HUXStates || null) instanceof Array) ){
 			this.initHUXState();
 		}
-		
+		this.addObjectToState({});
 		HUX.addLiveListener( this );
 		
 		this.pairs.toString = function(){
@@ -128,19 +129,44 @@ HUX.UrlMgr = {
 		state.level = this.level;
 		history.replaceState(state, "", "");
 	},
+	getProxyOnClickCallback: function(fnOrig, newHUXStates){
+		var self = this;
+		return function(oTarget){
+			var obj, target, ret, sTarget = oTarget.target;
+			target = document.getElementById( sTarget );
+			if(target !== null)
+				obj = {target: sTarget, content:target.innerHTML, type:self.OLD_CONTENT};
+			ret = fnOrig.apply(this, arguments);
+			if(ret && target !== null){
+				self.addObjectToState(  obj  );
+				newHUXStates.push( {target: sTarget, content:target.innerHTML, type:self.NEW_CONTENT} );
+			}
+			return ret;
+		};
+	},
 	onClick: function(event){
-		var pair = HUX.Compat.getEventTarget(event).href.replace(/.*@!?/g, "").split("=");
-		var sTarget = pair[0], target = document.getElementById(sTarget);
-		var url = pair[1];
+		var at = HUX.Compat.getEventTarget(event).href.replace(/.*@!?/g, "");
+		var sPairs = at.split(",");
+		var newHUXStates = [], self = this;
+		HUX.foreach(sPairs, function(sPair){
+			var pair, sTarget, target, url;
+			pair = sPair.split("=");
+			sTarget = pair[0];
+			target = document.getElementById(sTarget);
+			url = pair[1];
+			//this.addObjectToState({target:target.id, content:target.innerHTML, url:"", type:this.OLD_CONTENT});
+			this.pairs.addPair(sTarget, url, {
+				onAdd: this.getProxyOnClickCallback(this.pairsCallbacks.onAdd, newHUXStates),
+				onDelete: this.getProxyOnClickCallback(this.pairsCallbacks.onDelete, newHUXStates),
+				onReplace: this.getProxyOnClickCallback(this.pairsCallbacks.onReplace, newHUXStates)
+			});
+			//newHUXStates.push(  {target: sTarget, content:target.innerHTML ,url:url, type:this.NEW_CONTENT}  );
+		}, this);
+		this.pushState(newHUXStates, "", this.pairs.toString());
 		HUX.Compat.preventDefault(event);
-		this.addObjectToState({target:target.id, content:target.innerHTML, url:"", type:this.OLD_CONTENT});
-		this.pairs.addPair(sTarget, url, this.pairsCallbacks);
-		var newState = this.getNewState(sTarget, url);
-		this.pushState({target: sTarget, content:target.innerHTML ,url:url, type:this.NEW_CONTENT}, "", newState);
-		
 	},
 	pushState: function(obj, title, newState){
-		var state = {HUXStates: [obj]};
+		var state = {HUXStates: obj};
 		state.level = ++this.level;
 		history.pushState(state, title, newState);
 	},
@@ -148,16 +174,15 @@ HUX.UrlMgr = {
 		var state = this.getState();
 		if(!state)
 			throw new Error("state is null");
-		state.HUXStates = (state.HUXStates || []).filter(function(el){return el.target !== obj.target;}).concat([obj]);
+		state.HUXStates = (state.HUXStates || []).filter(function(el){return el.target !== obj.target || el.type !== obj.type;}).concat([obj]);
 		history.replaceState(state, title, "");
 	},
 	onPopState: function(event){
 	//	console.log(arguments);
 		try{
-			var state = event.state;
-			if(!state || state.level === undefined)
+			var state = event.state, self = HUX.UrlMgr;
+			if(!state || state.level === undefined || !self.enabled)
 				return;
-			var self = HUX.UrlMgr;
 			self.updateState( state );
 			var old_level = self.level;
 			self.level = state.level;
@@ -165,6 +190,10 @@ HUX.UrlMgr = {
 			HUX.foreach(state.HUXStates, function (info){
 				if(info.type === type2load){
 					var target = document.getElementById(info.target);
+					if(target === null){
+						HUX.logError("target #"+info.target+" not found");
+						return;
+					}
 					HUX.HUXEvents.trigger("loading", {target:  target});
 					HUX.inject(target, "replace", info.content);
 				}

@@ -72,7 +72,41 @@ HUX.HashMgr = {
 	 */
 	timer:100,
 	
-	
+	pairsCallbacks:{
+		onAdd: function(added){
+			var sTarget = added.target, target = document.getElementById(sTarget), self= HUX.HashMgr;
+			if(target !== null){
+				self.__default_contents[sTarget] = target.innerHTML;
+				self.load(target, added.url);
+				return true;
+			}
+			else{
+				return false;
+			}
+		},
+		onReplace: function(added){
+			var target = document.getElementById(added.target), self= HUX.HashMgr;
+			if(target !== null){
+				self.load(target, added.url);
+				return true;
+			}
+			else
+				return false;
+			},
+		onDelete: function(deleted){
+			var sTarget = deleted.target, self= HUX.HashMgr, replacement = self.__default_contents[sTarget];
+			if(replacement !== undefined){
+				var target = document.getElementById(sTarget);
+				if(target !== null){
+					HUX.HUXEvents.trigger("loading", {target: target });
+					HUX.inject(target, "replace", replacement);
+					return true;
+				}
+			}
+			return false;
+		}
+		
+	},
 	
 	
 	// =============================
@@ -250,53 +284,17 @@ HUX.HashMgr = {
 	 * 	- *keepPrevHash*: {Boolean} set to true if used by init, false otherwise.
 	 */
 	handler: function(ev, keepPrevHash){
+		
 		// what we name a pair here 
 		// is a pair "TARGET ID" : "URL" that you can find in the hash
 		var hash = location.hash.toString();
 		var newPM = HUX.PairManager.split(hash, /[#,]!([^=,]+)=([^=,]+)/g), self = this;
-		this.__hashObj.compairWith(newPM, {
-			onAdd: function(added){
-				var sTarget = added.target, target = document.getElementById(sTarget);
-				if(target !== null){
-					self.__default_contents[sTarget] = target.innerHTML;
-					self.load(target, added.url);
-					return true;
-				}
-				else{
-					return false;
-				}
-			},
-			onReplace: function(added){
-				var target = document.getElementById(added.target);
-				if(target !== null){
-					self.load(target, added.url);
-					return true;
-				}
-				else
-					return false;
-				},
-			onDelete: function(deleted){
-				var sTarget = deleted.target, replacement = self.__default_contents[sTarget];
-				if(replacement !== undefined){
-					var target = document.getElementById(sTarget);
-					if(target !== null){
-						HUX.HUXEvents.trigger("loading", {target: target });
-						HUX.inject(target, "replace", replacement);
-						return true;
-					}
-				}
-				return false;
-			}
-			
-		});
-		var sHash = "#"+this.__hashObj.map(function(e){return "!"+e.target+"="+e.url;}).join(",");
+		var normalHash = /,[^!]*$/.exec( location.hash ) || "";
+		this.__hashObj.compairWith(newPM, this.pairsCallbacks);
+		var sHash = "#"+this.__hashObj.map(function(e){return "!"+e.target+"="+e.url;}).join(",") +  normalHash;
 		this.updateHashSilently(sHash , keepPrevHash);
 		HUX.HashMgr.IFrameHack.updateIFrame(); // only if IFrameHack enabled
-		/*this.__hashObj = new_hashObj;*/
 	},
-	/*handler:function(){
-		return HUX.HashMgr.__handler.apply(HUX.HashMgr, arguments);
-	},*/
 	
 	/* 
 	 * namespace: HUX.HashMgr.IFrameHack

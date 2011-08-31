@@ -8,15 +8,16 @@
  */
 
 HUX.UrlMgrFb = {
-	enable: history.pushState === undefined,
+	enabled: history.pushState === undefined,
 	init: function(){
-		if(this.enable){
+		if(this.enabled){
 			HUX.addLiveListener(this);
 		}
 	},
 	listen: function(context){
 		if(document.evaluate){
-			HUX.Selector.evaluate( "./descendant-or-self::a[starts-with(@href, '@')]", context, this.replaceEach);
+			var links = HUX.Selector.evaluate( "./descendant-or-self::a[starts-with(@href, '@')]", context);
+			HUX.foreach(links, this.replaceEach, this);
 		}
 		else{
 			fnFilter = function(el){  

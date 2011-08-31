@@ -20,12 +20,12 @@
     THE SOFTWARE.
 **/
 
-
+// NOTE : experimental, needs improvement ...
 
 (function(){
 	var ht;
 	HUX.Transition = ht = {
-		enabled: false,
+		enabled: true,
 		timeout:30,
 		sTransitionEnd:HUX.Browser.evtPrefix() !== "moz" ? HUX.Browser.evtPrefix()+"TransitionEnd" : "transitionend",
 
@@ -46,27 +46,37 @@
 				return null;
 		},
 		init: function(){
-			
 			var evName;
+			if(!this.enabled)
+				return;
 			HUX.HUXEvents.bindGlobal("loading", ht.onLoading);
+			HUX.HUXEvents.createEventType("transiting");
+		},
+		getDuration: function(target){
+			var duration = ht.getStyle(target, ht.cssPrefix+"transition-duration");
+			var ms ;
+			if(! duration)
+				ms = 0;
+			else
+				ms = parseFloat(duration.replace(/s$/, ""))*1000;
+			return ms;
+		},
+		flushStyle: function(target){
+			ht.getStyle(target, "display");
 		},
 		onLoading: function(ev){
 			var target;
-			if( ht.hasClass(ev.target, "hux_transition") ){
+			if( ht.hasClass(ev.target, "hux_transition") && ht.enabled ){
 				ev.target.className = ev.target.className.replace(/\s*hux_tAppear\s*/g, "");
 				target = ev.target.cloneNode(true);
 				target.className += " hux_tVanishInit";
+				HUX.HUXEvents.trigger("transiting", {target:target});
 				ev.target.parentNode.insertBefore(target, ev.target);
 				// this makes flush the style ...
-				ht.getStyle(target, "display");
+				ht.flushStyle(target);
 				
 				target.className += " hux_tVanish";
-				var duration = ht.getStyle(target, ht.cssPrefix+"transition-duration");
-				var ms ;
-				if(! duration)
-					ms = 0;
-				else
-					ms = parseFloat(duration.replace(/s$/, ""))*1000;
+				var ms = ht.getDuration(target);
 				// rather than use transitionEnd that can never be triggered (if transition is not done)
 				// we use setTimeout with the value of the duration
 				setTimeout(function(){
@@ -77,10 +87,15 @@
 			}
 		},
 		makeAppear: function(ev){
-			ev.target.className += " hux_tAppearInit";
+			var target = ev.target;
+			target.className += " hux_tAppearInit";
 			// flush the style
-			ht.getStyle(ev.target, "display");
-			ev.target.className = ev.target.className.replace(/(hux_tAppear)Init/, "$1");
+			ht.flushStyle(target);
+			target.className = target.className.replace(/(hux_tAppear)Init/, "$1");
+			var ms = ht.getDuration(target);
+			setTimeout(function(){
+				target.className = target.className.replace("hux_tAppear", "");
+			}, ms);
 		},
 		hasClass: function(target, className){
 			return new RegExp("(^|\\s)"+className+"($|\\s)").test(target.className);

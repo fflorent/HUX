@@ -29,9 +29,9 @@ HUX.Form = {
 	 * Variable: defaultFilling
 	 * {String} the default filling method for forms
 	 * 
-	 * Default: "append"
+	 * Default: "replace"
 	 */
-	defaultFilling: "append",
+	defaultFilling: "replace",
 	/**
 	 * Variable: clearAfterSubmit
 	 * {Boolean} if true, the form is cleared after being submitted
@@ -52,8 +52,13 @@ HUX.Form = {
 	 * called by addLiveListener. For all forms having the "target" attribute, listens to submit events.
 	 */
 	listen: function(context){
-		HUX.Selector.byAttributeHUX("form", "target", context, function(el){
-			HUX.Compat.addEventListener(el, "submit", HUX.Form.onSubmit );
+		// we look for elements having the target attribute (to send and inject the content) 
+		// or the sendonly attribute (to send the data only)
+		HUX.foreach(["target", "sendonly"], function(searchedAttr){
+			HUX.Selector.byAttributeHUX("form", searchedAttr, context, function(el){
+				// when submitting, we trigger HUX.Form.onSubmit 
+				HUX.Compat.addEventListener(el, "submit", HUX.Form.onSubmit );
+			});
 		});
 	},
 	/**
@@ -94,7 +99,7 @@ HUX.Form = {
 				method:form.getAttribute("method"),
 				async:true,
 				filling:HUX.HUXattr.getFillingMethod(form) || HUX.Form.defaultFilling,
-				target:HUX.HUXattr.getTarget(form),
+				target:HUX.HUXattr.getTarget(form) || undefined, // 
 				srcElement:form
 			};
 			// we fill arrData : 

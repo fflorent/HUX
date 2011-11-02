@@ -1,3 +1,5 @@
+
+ #RewriteRules
  RewriteEngine on
  RewriteRule ([^@]*)@.*	 $1 
  RewriteRule ^f_(.*)	contents/features/$1.html

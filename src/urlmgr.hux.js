@@ -78,7 +78,7 @@ HUX.UrlMgr = {
 			return "@"+this.map(function(a){ return a.target+"="+a.url; }).join();
 		};
 		if( this.pairs.toString() !== ( location.pathname.match(/@.*/)||["@"] )[0] ){
-			this.pushState({}, "", location.pathname.replace(/@.*/g, "") + this.pairs.toString());
+			this.pushState([], "", location.pathname.replace(/@.*/g, "") + this.pairs.toString());
 		}
 	},
 	listen: function(context){

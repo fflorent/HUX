@@ -20,7 +20,7 @@
     THE SOFTWARE.
 **/
 
- 
+//NOTE : some parts of HUX and its modules are still a bit fragile. They need simplification.
 // core.hux.js 
 
 //TODO : split the core ...
@@ -119,11 +119,11 @@ var HUX = {
 	addLiveListener: function(mod){
 		if( mod.listen === undefined )
 			throw new TypeException("The module does not implement the following method : listen(context)");
-		mod.listen(document);
+		mod.listen(document, document);
 		HUX.HUXEvents.bindGlobal("beforeInject", function(event){
 			HUX.foreach(event.children, function(child){
 				if(child.nodeType === 1)  // is child an Element ?
-					mod.listen(child); 
+					mod.listen(child, event.target); 
 			});
 		});
 	},
@@ -968,7 +968,7 @@ var HUX = {
 	 * 	- *opt.url* : {String} the URL to load
 	 * 	- *opt.method* : {String} the method : POST or GET
 	 * 	- *opt.filling* : {String} the filling method ("replace", "append", "prepend", ...)
-	 * 	- *opt.target* : {Element} the target (in which we will inject the content). Optional for some filling methods.
+	 * 	- *opt.target* : {Element} the target (in which we will inject the content). Optional.
 	 * 	- *opt.data* : {URLEncoded String} the data to send
 	 *	- *opt.async* : {Boolean} asynchronous if true, synchronous if false (default = true)
 	 *	- *opt.username* ; {String} the login (optional)
@@ -977,7 +977,7 @@ var HUX = {
 	 * 	- *opt.onSuccess* : {Function} function to trigger if the request succeeds (optional)
 	 * 	- *opt.onError* : {Function} function to trigger if the request fails (optional)
 	 */
-	xhr:function(opt){
+	xhr: function(opt){
 		return this.XHR.proceed.apply(this.XHR, arguments);
 	},
 	/**

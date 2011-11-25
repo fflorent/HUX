@@ -58,7 +58,7 @@ var HUXcore = {
 		 * 	@args : the arguments to give to each listener
 		 */
 		trigger: function(evName, args){
-			HUXcore.foreach(HUXcore.HUXevents.__arrEv[evName], function(fn){
+			HUXcore.Compat.forEach(HUXcore.HUXevents.__arrEv[evName], function(fn){
 				var ret = fn.apply(window, args);
 				if(ret === false)
 					throw "trigger stoped";
@@ -88,7 +88,7 @@ var HUXcore = {
 					if(target.childNodes.length > 0){ // we use InsertBefore
 						HUXcore.HUXevents.trigger("beforeInject", [DOMContent]);
 						firstChild = target.firstChild;
-						HUXcore.foreach(DOMContent, function(el){
+						HUXcore.Compat.forEach(DOMContent, function(el){
 							target.insertBefore(el, firstChild);
 						});
 					}
@@ -215,7 +215,7 @@ var HUXcore = {
 				return this.evaluate(xpath, context, fnEach);
 			}
 			else{
-				HUXcore.foreach(attrs, function(attr){
+				HUXcore.Compat.forEach(attrs, function(attr){
 					ieRet = ieRet.concat( this.__byAttributeIE(tagName, attr, context, fnEach) );
 				});
 				return ieRet;
@@ -275,7 +275,7 @@ var HUXcore = {
 			
 			elts = context.getElementsByTagName(tagName);
 			// for each element found above
-			HUXcore.foreach(elts, function(el){
+			HUXcore.Compat.forEach(elts, function(el){
 				// we test the Filter function given
 				if( fnFilter.call(el) ){
 					ret.push(el); // if the filter accepted the condition, we add the current element in the results
@@ -453,7 +453,7 @@ var HUXcore = {
 	recursiveListen: function(jsNamespace){
 		jsNamespace.listen(document.documentElement);
 		HUXcore.HUXevents.add("beforeInject", function(children){
-			HUXcore.foreach(children, function(child){
+			HUXcore.Compat.forEach(children, function(child){
 				jsNamespace.listen(child); 
 			});
 		});
@@ -805,7 +805,7 @@ HUX_checker = {
 	},
 	check_targets: function(){
 		var targets = this.__get_targets();
-		HUXcore.foreach(targets, function(targ){
+		HUXcore.Compat.forEach(targets, function(targ){
 			if( document.getElementById(targ) === null){
 				this.logError("No Element of id=\""+targ+"\" found");
 			}

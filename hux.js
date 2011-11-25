@@ -21,7 +21,7 @@
     THE SOFTWARE.
 **/
 
- 
+//NOTE : some parts of HUX and its modules are still a bit fragile. They need simplification.
 // core.hux.js 
 
 //TODO : split the core ...
@@ -89,7 +89,8 @@ var HUX = {
 		this.Compat.addEventListener(window, "load", function(){
 			mod.init();
 		});
-	},
+	},	
+
 	
 	/**
 	 * Function: addLiveListener
@@ -120,30 +121,13 @@ var HUX = {
 	addLiveListener: function(mod){
 		if( mod.listen === undefined )
 			throw new TypeException("The module does not implement the following method : listen(context)");
-		mod.listen(document);
+		mod.listen(document, document);
 		HUX.HUXEvents.bindGlobal("beforeInject", function(event){
-			HUX.foreach(event.children, function(child){
+			HUX.Compat.forEach(event.children, function(child){
 				if(child.nodeType === 1)  // is child an Element ?
-					mod.listen(child); 
+					mod.listen(child, event.target); 
 			});
 		});
-	},
-	/**
-	 * Function: foreach
-	 * do a for-each of the array
-	 * 
-	 * Parameters:
-	 * 	- *array* : {Array} the array (or nodelist or any object listing other objects with integer key)
-	 * 	- *fn* : {Function} the function called for each element
-	 * 
-	 * Example of use: 
-	 * > 	foreach(document.getElementsByTagName("*"), function(el){ 
-	 * > 		alert(el.tagName); 
-	 * > 	});
-	 */
-	foreach: Array.forEach || function(array, fn, t){
-		for(var i = 0; i < array.length; i++)
-			fn.call(t||this, array[i], i, array);
 	},
 	/**
 	 * Function: toArray
@@ -163,6 +147,25 @@ var HUX = {
 			ret.push( obj[i] );
 		}
 		return ret;
+	},	
+	/**
+	 * Function: logError
+	 * logs errors in browser consoles
+	 * 
+	 * Parameters:
+	 * 	- *ex* : {Error} the exception to log
+	 */
+	logError: function(ex){
+		if(typeof console !== "undefined"){
+			if(console.exception !== undefined){
+				console.exception.apply(console, arguments);
+			}
+			else if(console.error !== undefined){
+				console.error(ex);
+				if(ex.message) // IE
+					console.error(ex.message);
+			}
+		}
 	},
 	// Inspired From : Array Remove - By John Resig (MIT Licensed)
 	/**
@@ -353,12 +356,12 @@ var HUX = {
 				};
 				
 				// we trigger all the events
-				HUX.foreach(lsters, function(fn){
+				HUX.Compat.forEach(lsters, function(fn){
 					var ret = fn.call(window, event, callback);
 				});
 				// is the event is not prevented, we run the callback function
 				if(!event.defaultPrevented && callback !== undefined)
-					callback();
+					callback(event);
 			}
 			catch(ex){
 				HUX.logError(ex);
@@ -384,25 +387,7 @@ var HUX = {
 			return true;
 		}
 	},
-	/**
-	 * Function: logError
-	 * logs errors in browser consoles
-	 * 
-	 * Parameters:
-	 * 	- *ex* : {Error} the exception to log
-	 */
-	logError: function(ex){
-		if(typeof console !== "undefined"){
-			if(console.exception !== undefined){
-				console.exception.apply(console, arguments);
-			}
-			else if(console.error !== undefined){
-				console.error(ex);
-				if(ex.message) // IE
-					console.error(ex.message);
-			}
-		}
-	},
+
 	/**
 	 * Namespace; Inject
 	 * 
@@ -411,13 +396,13 @@ var HUX = {
 	Inject:{
 		
 		/**
-		 * Function: __proceed
+		 * Function: proceed
 		 * proceeds to the injection. Do not use this function directly. See <inject>
 		 * 
 		 * Parameters:
 		 * 	- *target* : {Element} the element which will receive DOMContent
 		 * 	- *method* : {String} the string tallying to hux:filling
-		 * 	- *DOMContent* : {DocumentFragment or Document} container of elements to be added to target
+		 * 	- *content* : {DocumentFragment, Document or String} elements to be added to target
 		 * 
 		 * NOTE : DOMContent is a DocumentFragment if it has been generated through a String, or a Document if it has been given as is by the brower. 
 		 * 	If it is a Document, you may have to use <importNode>.
@@ -426,60 +411,40 @@ var HUX = {
 		 * Returns:
 		 * 	- {NodeList of Elements} the inserted elements
 		 */
-		__proceed: function(target, method, DOMContent){
-			var aInserted = this.callFillingMethod(target, method, DOMContent);
-			return aInserted;
+		proceed: function(target, method, content){
+			if(typeof content !== "string" && content.nodeType !== undefined) // if content is a node
+				content = this.forceDocumentFragment( content );
+			return this.__fillingMethods[ method ].call(this, content, target || null);
 		},
 		__checkTarget: function(target, methodName){
 			if(!target)
 				throw new Error(methodName+" filling method requires a target element");
 		},
 		__fillingMethods: {
-			prepend: function(DOMContent, target){
-				this.__checkTarget( target, "prepend")
-				DOMContent = this.forceDocumentFragment( DOMContent );
+			prepend: function(content, target){
+				var aInserted;
+				this.__checkTarget( target, "prepend");
 				if(target.childNodes.length > 0){ // we use InsertBefore
 					firstChild = target.firstChild;
-					target.insertBefore(DOMContent, firstChild);
-					return DOMContent.childNodes;
+					aInserted = target.insertBefore(content, firstChild);
 				}
 				else{ // if target has no children, we append 
-					return this.callFillingMethod(target, "append", DOMContent);
+					aInserted = target.appendChild(content);
 				}
+				return aInserted;
 			},
-			append: function(DOMContent, target){
+			append: function(content, target){
 				var aInserted;
-				DOMContent = this.forceDocumentFragment( DOMContent );
-				if(DOMContent.nodeType !== document.DOCUMENT_FRAGMENT_NODE)
-					throw new TypeError("append expects a DocumentFragment");
 				this.__checkTarget(target, "append");
-				target.appendChild(DOMContent);
+				target.appendChild(content);
 				aInserted = target.childNodes;
 				return aInserted;
 			},
-			replace: function(DOMContent, target){
+			replace: function(content, target){
 				this.__checkTarget(target, "replace");
 				this.empty(target);
-				return this.callFillingMethod(target, "append", DOMContent);
+				return this.proceed(target, "append", content);
 			}
-		},
-		/**
-		 * Function: callFillingMethod
-		 * calls a filling method
-		 * 
-		 * NOTE: This function is rather designed to be called by other filling methods. 
-		 * 	If you want to handle an event, see <HUX.inject>
-		 * 
-		 * Parameters:
-		 * 	- *target* : {Element} the element which will receive @DOMContent
-		 * 	- *method* : {String} the string tallying to hux:filling
-		 * 	- *DOMContent* : {DocumentFragment or Document} Document(Fragment) containing elements to be added to @target
-		 * 
-		 * Returns:
-		 * 	- {NodeList} the inserted elements
-		 */
-		callFillingMethod: function(target, method, DOMContent){
-			return this.__fillingMethods[ method ].call(this, DOMContent, target || null);
 		},
 		/**
 		 * Function: setFillingMethod
@@ -532,7 +497,7 @@ var HUX = {
 			var ret = doc, content;
 			if(doc.nodeType === document.DOCUMENT_NODE){
 				content = [];
-				HUX.foreach(doc.childNodes, function(c){
+				HUX.Compat.forEach(doc.childNodes, function(c){
 					content.push( c );
 				});
 				ret = this.injectIntoDocFrag( content );
@@ -549,10 +514,9 @@ var HUX = {
 		empty: function(parent){
 			var child;
 			HUX.HUXEvents.trigger("beforeEmpty", {target: parent});
-			
 			this.pauseMedias(parent);
 			/*if(window.Audio !== undefined){
-				HUX.foreach(parent.querySelectorAll("audio, video"), function(media){
+				HUX.Compat.forEach(parent.querySelectorAll("audio, video"), function(media){
 					media.pause();
 				});
 			}*/
@@ -576,26 +540,11 @@ var HUX = {
 			if(parent.tagName in ["audio", "video"])
 				parent.pause();
 			if( parent.querySelectorAll ){
-				HUX.foreach(parent.querySelectorAll("audio, video"), function(media){
+				HUX.Compat.forEach(parent.querySelectorAll("audio, video"), function(media){
 					media.pause();
 				});
 			}
 			
-		},
-		/**
-		 * Function: getChildren
-		 * DEPRECATED: use <injectIntoDocFrag> instead
-		 * 
-		 * gets all the children from a parent Element
-		 * 
-		 * Parameters:
-		 * 	- *parent*: {Element} the parent Element
-		 * 
-		 * Returns:
-		 * 	- {NodeList} the children
-		 */
-		getChildren: function(parent){
-			return parent.childNodes;
 		},
 		/**
 		 * Function: injectIntoDocFrag
@@ -626,6 +575,8 @@ var HUX = {
 		 * Function: htmltodom
 		 * convert HTML String to DOM
 		 * 
+		 * => Deprecated
+		 * 
 		 * Parameters:
 		 * 	- *sHtml* : {String} String containing HTML
 		 * 	- *context* : {Element} the element designed to receive the content (optional)
@@ -635,28 +586,63 @@ var HUX = {
 		 */
 		htmltodom: function(sHtml, context){
 			var parent = context ? context.cloneNode(false) : document.createElement('div');
-			try{
-				parent.innerHTML = sHtml;
+			var ret;
+			if(Range !== undefined && Range.prototype.createContextualFragment !== undefined){ // better performance with createContextualFragment since we need to return the children
+				var range = document.createRange();
+				ret = range.createContextualFragment(sHtml);
 			}
-			catch(e){
-				// IE doesn't allow using innerHTML with table,
-				// but allows create a div element in which we inject the HTML String of a TABLE
-				if(parent.tagName === "TABLE" ){
-					if(/^<(tr|tbody)/i.test(sHTML)){
-						parent = this.htmltodom("<TABLE>"+sHtml+"</TABLE>", context).firstChild;
-					}
-					else{
-						HUX.logError("TABLE element can only have TR and TBODY elements as direct children");
-					}
+			else{ // IE ...
+				try{
+					parent.innerHTML = sHtml;
 				}
-				else
-					HUX.logError(e);
+				catch(e){
+					// IE doesn't allow using innerHTML with table,
+					// but allows create a div element in which we inject the HTML String of a TABLE
+					if(parent.tagName === "TABLE" ){
+						if(/^<(tr|tbody)/i.test(sHTML)){
+							parent = this.htmltodom("<TABLE>"+sHtml+"</TABLE>", context).firstChild;
+						}
+						else{
+							HUX.logError("TABLE element can only have TR and TBODY elements as direct children");
+						}
+					}
+					else
+						HUX.logError(e);
+				}
+				ret = this.injectIntoDocFrag(parent.childNodes);
+				parent = null;
 			}
-			var ret = this.injectIntoDocFrag(parent.childNodes);
-			parent = null;
 			return ret;
-		}
+		},
+		// needs to be tested
+		/*insertNode: function(target, position, sHTML){
+			var ret = null;
+			
+			if(Range !== undefined && Range.prototype.createContextualFragment !== undefined){ // better performance with createContextualFragment since we need to return the children
+				var range = document.createRange();
+				var frag = range.createContextualFragment(sHTML);
+				ret = Array.prototype.slice.call(frag.childNodes);
+				switch(position){
+					case "afterbegin": 
+						if(target.childNodes > 0){
+							target.insertBefore(frag, target.firstChild);
+							break;
+						}
+					case "beforeend":
+						target.appendChild(frag);
+						break;
+				}
+			}
+			else{ // IE ...
+				var prevFirstChild;
+				prevFirstChild = target.firstChild;
+				target.insertAdjacentHTML(position, sHTML);
+				ret =  Array.prototype.slice.call(target.childNodes, HUX.indexOf(target.childNodes, prevFirstChild));
+			}
+			return ret;
+		}*/
 	},
+	
 	/**
 	 * Function: inject
 	 * 
@@ -666,13 +652,13 @@ var HUX = {
 	 * 	- *content* : {String or Array of Element} HTML String or Array of elements to be added to @target
 	 */
 	inject:function(target, method, content){
-		var DOMContent;
+		var DOMContent = content;
 		if(typeof content === "string")
 			DOMContent = this.Inject.htmltodom(content, target);
-		else if(content.nodeType){ // if content is a node : 
+		if(content.nodeType){ // if content is a node : 
 			if(content.nodeType === document.DOCUMENT_NODE){ // if the node is an XML Document
 				var arrContents = [];
-				HUX.foreach(content.childNodes, function(c){
+				HUX.Compat.forEach(content.childNodes, function(c){
 					arrContents.push( HUX.importNode(c) );
 				});
 				DOMContent = this.Inject.injectIntoDocFrag( arrContents );
@@ -681,11 +667,11 @@ var HUX = {
 			else
 				DOMContent = this.Inject.injectIntoDocFrag( [ HUX.importNode(content) ] ); // we create a single imported element Array
 		}
-		else if(content.length !== undefined){ // if the content is enumerable and is not a node
+		else if(content.length !== undefined && typeof content !== "string"){ // if the content is enumerable and is not a node
 			DOMContent = this.Inject.injectIntoDocFrag( content );
 			delete content;
 		}
-		else
+		else if(typeof content !== "string")
 			throw new TypeError("content : invalid argument");
 		if(! method) // if method === null, default is REPLACEMENT
 			method = "replace";
@@ -694,7 +680,7 @@ var HUX = {
 		HUX.HUXEvents.trigger("beforeInject", {target: target, children: DOMContent.childNodes}, function(){
 			var aInserted = [];
 			try{
-				aInserted = HUX.Inject.__proceed(target, method, DOMContent); 
+				aInserted = HUX.Inject.proceed(target, method, DOMContent); 
 			}
 			finally{
 				HUX.HUXEvents.trigger("afterInject", {target: target || document.body, children: aInserted});
@@ -783,7 +769,7 @@ var HUX = {
 			}
 			else{
 				var self= this;
-				HUX.foreach(attrs, function(attr){
+				HUX.Compat.forEach(attrs, function(attr){
 					ieRet = ieRet.concat( self.__byAttributeIE.call(self, tagName, attr, context, fnEach) );
 				});
 				return ieRet;
@@ -872,7 +858,7 @@ var HUX = {
 			fnEach = fnEach || function(){};
 			elts = context.getElementsByTagName(tagName);
 			// for each element found above
-			HUX.foreach(elts, function(el){
+			HUX.Compat.forEach(elts, function(el){
 				// we test the Filter function given
 				if( fnFilter(el) ){
 					ret.push(el); // if the filter accepted the condition, we add the current element in the results
@@ -914,6 +900,12 @@ var HUX = {
 				// 
 				this.setReadystatechange(xhr, opt.filling, opt.target, opt);
 				xhr.setRequestHeader("Content-Type", opt.contentType || "application/x-www-form-urlencoded");
+				// if the user set requestHeaders
+				if(opt.requestHeaders){
+					for(var hName in opt.requestHeaders)
+						xhr.setRequestHeader(hName, opt.requestHeaders[hName]);
+				}
+					
 				// we trigger the event "loading"
 				HUX.HUXEvents.trigger("loading", {target: (opt.target || document.body) });
 				xhr.send(data);
@@ -969,16 +961,17 @@ var HUX = {
 	 * 	- *opt.url* : {String} the URL to load
 	 * 	- *opt.method* : {String} the method : POST or GET
 	 * 	- *opt.filling* : {String} the filling method ("replace", "append", "prepend", ...)
-	 * 	- *opt.target* : {Element} the target (in which we will inject the content). Optional for some filling methods.
+	 * 	- *opt.target* : {Element} the target (in which we will inject the content). Optional.
 	 * 	- *opt.data* : {URLEncoded String} the data to send
 	 *	- *opt.async* : {Boolean} asynchronous if true, synchronous if false (default = true)
 	 *	- *opt.username* ; {String} the login (optional)
 	 * 	- *opt.password* : {String} the password (optional)
 	 *	- *opt.contentType* : {String} Content-Type Request Header (default = "application/x-www-form-urlencoded")
+	 * 	- *opt.requestHeaders* : {HashMap} map of this type {"<headerName>":"<headerValue>" , ...}
 	 * 	- *opt.onSuccess* : {Function} function to trigger if the request succeeds (optional)
 	 * 	- *opt.onError* : {Function} function to trigger if the request fails (optional)
 	 */
-	xhr:function(opt){
+	xhr: function(opt){
 		return this.XHR.proceed.apply(this.XHR, arguments);
 	},
 	/**
@@ -1189,6 +1182,34 @@ var HUX = {
 				ev.preventDefault();
 			else // IE
 				event.cancelBubble = event.returnValue = false;
+		},
+		/**
+		* Function: foreach
+		* do a for-each of the array
+		* 
+		* Parameters:
+		* 	- *array* : {Array} the array (or nodelist or any object listing other objects with integer key)
+		* 	- *fn* : {Function} the function called for each element
+		* 
+		* Example of use: 
+		* > 	foreach(document.getElementsByTagName("*"), function(el){ 
+		* > 		alert(el.tagName); 
+		* > 	});
+		*/
+		forEach: Array.forEach || function(array, fn, t){
+			for(var i = 0; i < array.length; i++)
+				fn.call(t||this, array[i], i, array);
+		},
+		
+		indexOf: Array.indexOf || function(array, obj){
+			var ap = Array.prototype;
+			return ap.indexOf !== undefined? ap.indexOf.apply(arguments[0], Array.prototype.slice.call(arguments, 1)) : (function(){
+				for(var i = 0; i < array.length; i++){
+					if(array[i] === obj)
+						return i;
+				}
+				return -1;
+			})();
 		}
 	},
 	/**
@@ -1409,7 +1430,7 @@ HUX.PairManager = function(){
 		if(typeof index === "number" && index >= 0){
 			var aDeleted = this.splice(index,nb);
 			if(onDelete !== undefined)
-				HUX.foreach(aDeleted, onDelete); 
+				HUX.Compat.forEach(aDeleted, onDelete); 
 			
 		}
 		else
@@ -1446,7 +1467,7 @@ HUX.PairManager = function(){
 				else{
 					aAdded = other.slice(i, newIndex);
 					var self = this;
-					HUX.foreach(aAdded, function(el){
+					HUX.Compat.forEach(aAdded, function(el){
 						if(self.indexOf(el.target) >= 0)
 							throw new TypeError("Inversion of two elements. Abandon");
 					});
@@ -1466,7 +1487,7 @@ HUX.PairManager = function(){
 							
 						}
 						
-						//HUX.foreach(aAdded, callbacks.onAdd);
+						//HUX.Compat.forEach(aAdded, callbacks.onAdd);
 					}
 					/*var args = aAdded.slice(); // we copy aAdded
 					args.unshift(newIndex, 0); // we add the two first arguments of splice here
@@ -1520,7 +1541,7 @@ HUX.PairManager = function(){
 	PM.prototype.length = 0;
 	if(! new PM(1).length){
 		PM.prototype = { length: 0 };
-		HUX.foreach(["join", "pop", "push", "reverse", "shift", "slice", "sort", "splice", "unshift"], function(i){
+		HUX.Compat.forEach(["join", "pop", "push", "reverse", "shift", "slice", "sort", "splice", "unshift"], function(i){
 			PM.prototype[i] = Array.prototype[i];
 		});
 	}
@@ -1624,7 +1645,41 @@ HUX.HashMgr = {
 	 */
 	timer:100,
 	
-	
+	pairsCallbacks:{
+		onAdd: function(added){
+			var sTarget = added.target, target = document.getElementById(sTarget), self= HUX.HashMgr;
+			if(target !== null){
+				self.__default_contents[sTarget] = target.innerHTML;
+				self.load(target, added.url);
+				return true;
+			}
+			else{
+				return false;
+			}
+		},
+		onReplace: function(added){
+			var target = document.getElementById(added.target), self= HUX.HashMgr;
+			if(target !== null){
+				self.load(target, added.url);
+				return true;
+			}
+			else
+				return false;
+			},
+		onDelete: function(deleted){
+			var sTarget = deleted.target, self= HUX.HashMgr, replacement = self.__default_contents[sTarget];
+			if(replacement !== undefined){
+				var target = document.getElementById(sTarget);
+				if(target !== null){
+					HUX.HUXEvents.trigger("loading", {target: target });
+					HUX.inject(target, "replace", replacement);
+					return true;
+				}
+			}
+			return false;
+		}
+		
+	},
 	
 	
 	// =============================
@@ -1802,53 +1857,17 @@ HUX.HashMgr = {
 	 * 	- *keepPrevHash*: {Boolean} set to true if used by init, false otherwise.
 	 */
 	handler: function(ev, keepPrevHash){
+		
 		// what we name a pair here 
 		// is a pair "TARGET ID" : "URL" that you can find in the hash
 		var hash = location.hash.toString();
 		var newPM = HUX.PairManager.split(hash, /[#,]!([^=,]+)=([^=,]+)/g), self = this;
-		this.__hashObj.compairWith(newPM, {
-			onAdd: function(added){
-				var sTarget = added.target, target = document.getElementById(sTarget);
-				if(target !== null){
-					self.__default_contents[sTarget] = target.innerHTML;
-					self.load(target, added.url);
-					return true;
-				}
-				else{
-					return false;
-				}
-			},
-			onReplace: function(added){
-				var target = document.getElementById(added.target);
-				if(target !== null){
-					self.load(target, added.url);
-					return true;
-				}
-				else
-					return false;
-				},
-			onDelete: function(deleted){
-				var sTarget = deleted.target, replacement = self.__default_contents[sTarget];
-				if(replacement !== undefined){
-					var target = document.getElementById(sTarget);
-					if(target !== null){
-						HUX.HUXEvents.trigger("loading", {target: target });
-						HUX.inject(target, "replace", replacement);
-						return true;
-					}
-				}
-				return false;
-			}
-			
-		});
-		var sHash = "#"+this.__hashObj.map(function(e){return "!"+e.target+"="+e.url;}).join(",");
+		var normalHash = /,[^!]*$/.exec( location.hash ) || "";
+		this.__hashObj.compairWith(newPM, this.pairsCallbacks);
+		var sHash = "#"+this.__hashObj.map(function(e){return "!"+e.target+"="+e.url;}).join(",") +  normalHash;
 		this.updateHashSilently(sHash , keepPrevHash);
 		HUX.HashMgr.IFrameHack.updateIFrame(); // only if IFrameHack enabled
-		/*this.__hashObj = new_hashObj;*/
 	},
-	/*handler:function(){
-		return HUX.HashMgr.__handler.apply(HUX.HashMgr, arguments);
-	},*/
 	
 	/* 
 	 * namespace: HUX.HashMgr.IFrameHack
@@ -1951,7 +1970,7 @@ HUX.addModule(HUX.HashMgr);
 			// before calling the original HashMgr.listen()
 			// we transpose HUX-prefixed href to non-prefixed href
 			var elts = hc.Selector.byAttributeHUX("a", "href", context); // get all anchors with the HUX prefixed href attribute
-			hc.foreach(elts, function(el){
+			hc.Compat.forEach(elts, function(el){
 				el.setAttribute("href", hc.HUXattr.getAttributeHUX(el, "href"));
 			});
 		}
@@ -1995,9 +2014,9 @@ HUX.Form = {
 	 * Variable: defaultFilling
 	 * {String} the default filling method for forms
 	 * 
-	 * Default: "append"
+	 * Default: "replace"
 	 */
-	defaultFilling: "append",
+	defaultFilling: "replace",
 	/**
 	 * Variable: clearAfterSubmit
 	 * {Boolean} if true, the form is cleared after being submitted
@@ -2018,8 +2037,13 @@ HUX.Form = {
 	 * called by addLiveListener. For all forms having the "target" attribute, listens to submit events.
 	 */
 	listen: function(context){
-		HUX.Selector.byAttributeHUX("form", "target", context, function(el){
-			HUX.Compat.addEventListener(el, "submit", HUX.Form.onSubmit );
+		// we look for elements having the target attribute (to send and inject the content) 
+		// or the sendonly attribute (to send the data only)
+		HUX.Compat.forEach(["target", "sendonly"], function(searchedAttr){
+			HUX.Selector.byAttributeHUX("form", searchedAttr, context, function(el){
+				// when submitting, we trigger HUX.Form.onSubmit 
+				HUX.Compat.addEventListener(el, "submit", HUX.Form.onSubmit );
+			});
 		});
 	},
 	/**
@@ -2060,7 +2084,7 @@ HUX.Form = {
 				method:form.getAttribute("method"),
 				async:true,
 				filling:HUX.HUXattr.getFillingMethod(form) || HUX.Form.defaultFilling,
-				target:HUX.HUXattr.getTarget(form),
+				target:HUX.HUXattr.getTarget(form) || undefined, // 
 				srcElement:form
 			};
 			// we fill arrData : 
@@ -2132,7 +2156,7 @@ HUX.ScriptInjecter = {
 		try{
 			var scripts = [];
 			var toArray = Array.prototype.slice;
-			HUX.foreach(ev.children, function(child){
+			HUX.Compat.forEach(ev.children, function(child){
 				if(child.tagName === "SCRIPT")
 					scripts.push(child);
 				else if(child.nodeType === 1)
@@ -2251,7 +2275,6 @@ HUX.addModule( HUX.ScriptInjecter );/**
 	 * changes the class of the target at each stage of the load
 	 */
 	HUX.StageClassMgr = hscm = {
-		delayEnd:30, // needed for transitions 
 		// regular expression for erasing stage classes
 		reErase: null,
 		/**
@@ -2373,7 +2396,7 @@ HUX.Overlay = {
 			if(docOvl.documentElement.tagName.toLowerCase() !== this.__rootTagName)
 				throw new TypeError("wrong overlay document passed in HUX.Overlay.proceed");
 			var childNodes = docOvl.documentElement.childNodes;
-			HUX.foreach(childNodes, function(el){
+			HUX.Compat.forEach(childNodes, function(el){
 				if(el.nodeType === document.ELEMENT_NODE){ // only treat element nodes
 					HUX.Overlay.treatOvlChild( el );
 				}
@@ -2400,7 +2423,7 @@ HUX.Overlay = {
 			// first we filter with the className
 			nodelist = context.getElementsByClassName( className );
 			// second we filter with the tagName
-			HUX.foreach(nodelist, function(e){
+			HUX.Compat.forEach(nodelist, function(e){
 				if(e.tagName.toLowerCase() === tagName.toLowerCase())
 					ret.push( e );
 			});
@@ -2529,7 +2552,7 @@ HUX.Overlay = {
 	},
 	
 	prependContent: function(targets, toAppend){
-		HUX.foreach(targets, function( target ){
+		HUX.Compat.forEach(targets, function( target ){
 			if(target.firstChild) // if there is at least one child node
 				target.insertBefore( toAppend.cloneNode(true), target.firstChild );
 			else // otherwise, we append
@@ -2585,7 +2608,7 @@ HUX.Overlay = {
 			else
 				this.appendContent( foundElts, toAdd);
 			var self = this;
-			HUX.foreach(foundElts, function(target){
+			HUX.Compat.forEach(foundElts, function(target){
 				self.mergeAttributes( target, el );
 			});
 			el = toPosition = toAdd = null;
@@ -2624,7 +2647,9 @@ HUX.addModule( HUX.Overlay );
 HUX.UrlMgr = {
 	// history level
 	level:0,
+	// OLD_CONTENT corresponds to content that have been deleted. onPopState loads this type of content if the user goes back
 	OLD_CONTENT:1,
+	// NEW_CONTENT corresponds to content that have been added. onPopState loads this type of content if the user goes forward
 	NEW_CONTENT:2,
 	pairs: null,
 	enabled: !!history.pushState,
@@ -2659,7 +2684,6 @@ HUX.UrlMgr = {
 			}
 			return false;
 		}
-		
 	},
 	preventDefaultIfDisabled: false,
 	asyncReq: false,
@@ -2672,14 +2696,14 @@ HUX.UrlMgr = {
 		if(!this.getState() || ! ( (this.getState().HUXStates || null) instanceof Array) ){
 			this.initHUXState();
 		}
-		
+		this.addObjectToState({});
 		HUX.addLiveListener( this );
 		
 		this.pairs.toString = function(){
 			return "@"+this.map(function(a){ return a.target+"="+a.url; }).join();
 		};
 		if( this.pairs.toString() !== ( location.pathname.match(/@.*/)||["@"] )[0] ){
-			this.pushState({}, "", location.pathname.replace(/@.*/g, "") + this.pairs.toString());
+			this.pushState([], "", location.pathname.replace(/@.*/g, "") + this.pairs.toString());
 		}
 	},
 	listen: function(context){
@@ -2713,14 +2737,6 @@ HUX.UrlMgr = {
 	getNewState: function(target, url){
 		var reExtract = new RegExp(location.pathname+".*");
 		var curState = location.href.match(reExtract)[0];
-		/*var split = this.split(target, url, curState);
-		split.push({target:target, url:url});*/
-
-		//var newState = curState.replace( /(@.*|$)/, "@"+split.map(function(a){return a.target+"="+a.url}).join() );
-		//var replaced = this.pairs.addPair(target, url);
-		//if(!replaced){
-		
-		//}
 		var newState = curState.replace( /(@.*|$)/, this.pairs.toString());
 		return newState;
 	},
@@ -2730,19 +2746,44 @@ HUX.UrlMgr = {
 		state.level = this.level;
 		history.replaceState(state, "", "");
 	},
+	getProxyOnClickCallback: function(fnOrig, newHUXStates){
+		var self = this;
+		return function(oTarget){
+			var obj, target, ret, sTarget = oTarget.target;
+			target = document.getElementById( sTarget );
+			if(target !== null)
+				obj = {target: sTarget, content:target.innerHTML, type:self.OLD_CONTENT};
+			ret = fnOrig.apply(this, arguments);
+			if(ret && target !== null){
+				self.addObjectToState(  obj  );
+				newHUXStates.push( {target: sTarget, content:target.innerHTML, type:self.NEW_CONTENT} );
+			}
+			return ret;
+		};
+	},
 	onClick: function(event){
-		var pair = HUX.Compat.getEventTarget(event).href.replace(/.*@!?/g, "").split("=");
-		var sTarget = pair[0], target = document.getElementById(sTarget);
-		var url = pair[1];
+		var at = HUX.Compat.getEventTarget(event).href.replace(/.*@!?/g, "");
+		var sPairs = at.split(",");
+		var newHUXStates = [], self = this;
+		HUX.Compat.forEach(sPairs, function(sPair){
+			var pair, sTarget, target, url;
+			pair = sPair.split("=");
+			sTarget = pair[0];
+			target = document.getElementById(sTarget);
+			url = pair[1];
+			//this.addObjectToState({target:target.id, content:target.innerHTML, url:"", type:this.OLD_CONTENT});
+			this.pairs.addPair(sTarget, url, {
+				onAdd: this.getProxyOnClickCallback(this.pairsCallbacks.onAdd, newHUXStates),
+				onDelete: this.getProxyOnClickCallback(this.pairsCallbacks.onDelete, newHUXStates),
+				onReplace: this.getProxyOnClickCallback(this.pairsCallbacks.onReplace, newHUXStates)
+			});
+			//newHUXStates.push(  {target: sTarget, content:target.innerHTML ,url:url, type:this.NEW_CONTENT}  );
+		}, this);
+		this.pushState(newHUXStates, "", this.pairs.toString());
 		HUX.Compat.preventDefault(event);
-		this.addObjectToState({target:target.id, content:target.innerHTML, url:"", type:this.OLD_CONTENT});
-		this.pairs.addPair(sTarget, url, this.pairsCallbacks);
-		var newState = this.getNewState(sTarget, url);
-		this.pushState({target: sTarget, content:target.innerHTML ,url:url, type:this.NEW_CONTENT}, "", newState);
-		
 	},
 	pushState: function(obj, title, newState){
-		var state = {HUXStates: [obj]};
+		var state = {HUXStates: obj};
 		state.level = ++this.level;
 		history.pushState(state, title, newState);
 	},
@@ -2750,23 +2791,26 @@ HUX.UrlMgr = {
 		var state = this.getState();
 		if(!state)
 			throw new Error("state is null");
-		state.HUXStates = (state.HUXStates || []).filter(function(el){return el.target !== obj.target;}).concat([obj]);
+		state.HUXStates = (state.HUXStates || []).filter(function(el){return el.target !== obj.target || el.type !== obj.type;}).concat([obj]);
 		history.replaceState(state, title, "");
 	},
 	onPopState: function(event){
 	//	console.log(arguments);
 		try{
-			var state = event.state;
-			if(!state || state.level === undefined)
+			var state = event.state, self = HUX.UrlMgr;
+			if(!state || state.level === undefined || !self.enabled)
 				return;
-			var self = HUX.UrlMgr;
 			self.updateState( state );
 			var old_level = self.level;
 			self.level = state.level;
 			var type2load = old_level > self.level ? self.OLD_CONTENT : self.NEW_CONTENT;
-			HUX.foreach(state.HUXStates, function (info){
+			HUX.Compat.forEach(state.HUXStates, function (info){
 				if(info.type === type2load){
 					var target = document.getElementById(info.target);
+					if(target === null){
+						HUX.logError("target #"+info.target+" not found");
+						return;
+					}
 					HUX.HUXEvents.trigger("loading", {target:  target});
 					HUX.inject(target, "replace", info.content);
 				}
@@ -2802,15 +2846,16 @@ HUX.addModule( HUX.UrlMgr );
  */
 
 HUX.UrlMgrFb = {
-	enable: history.pushState === undefined,
+	enabled: history.pushState === undefined,
 	init: function(){
-		if(this.enable){
+		if(this.enabled){
 			HUX.addLiveListener(this);
 		}
 	},
 	listen: function(context){
 		if(document.evaluate){
-			HUX.Selector.evaluate( "./descendant-or-self::a[starts-with(@href, '@')]", context, this.replaceEach);
+			var links = HUX.Selector.evaluate( "./descendant-or-self::a[starts-with(@href, '@')]", context);
+			HUX.Compat.forEach(links, this.replaceEach, this);
 		}
 		else{
 			fnFilter = function(el){  
@@ -2851,12 +2896,12 @@ HUX.addModule(HUX.UrlMgrFb);/**
     THE SOFTWARE.
 **/
 
-
+// NOTE : experimental, needs improvement ...
 
 (function(){
 	var ht;
 	HUX.Transition = ht = {
-		enabled: false,
+		enabled: true,
 		timeout:30,
 		sTransitionEnd:HUX.Browser.evtPrefix() !== "moz" ? HUX.Browser.evtPrefix()+"TransitionEnd" : "transitionend",
 
@@ -2877,27 +2922,37 @@ HUX.addModule(HUX.UrlMgrFb);/**
 				return null;
 		},
 		init: function(){
-			
 			var evName;
+			if(!this.enabled)
+				return;
 			HUX.HUXEvents.bindGlobal("loading", ht.onLoading);
+			HUX.HUXEvents.createEventType("transiting");
+		},
+		getDuration: function(target){
+			var duration = ht.getStyle(target, ht.cssPrefix+"transition-duration");
+			var ms ;
+			if(! duration)
+				ms = 0;
+			else
+				ms = parseFloat(duration.replace(/s$/, ""))*1000;
+			return ms;
+		},
+		flushStyle: function(target){
+			ht.getStyle(target, "display");
 		},
 		onLoading: function(ev){
 			var target;
-			if( ht.hasClass(ev.target, "hux_transition") ){
+			if( ht.hasClass(ev.target, "hux_transition") && ht.enabled ){
 				ev.target.className = ev.target.className.replace(/\s*hux_tAppear\s*/g, "");
 				target = ev.target.cloneNode(true);
 				target.className += " hux_tVanishInit";
+				HUX.HUXEvents.trigger("transiting", {target:target});
 				ev.target.parentNode.insertBefore(target, ev.target);
 				// this makes flush the style ...
-				ht.getStyle(target, "display");
+				ht.flushStyle(target);
 				
 				target.className += " hux_tVanish";
-				var duration = ht.getStyle(target, ht.cssPrefix+"transition-duration");
-				var ms ;
-				if(! duration)
-					ms = 0;
-				else
-					ms = parseFloat(duration.replace(/s$/, ""))*1000;
+				var ms = ht.getDuration(target);
 				// rather than use transitionEnd that can never be triggered (if transition is not done)
 				// we use setTimeout with the value of the duration
 				setTimeout(function(){
@@ -2908,10 +2963,15 @@ HUX.addModule(HUX.UrlMgrFb);/**
 			}
 		},
 		makeAppear: function(ev){
-			ev.target.className += " hux_tAppearInit";
+			var target = ev.target;
+			target.className += " hux_tAppearInit";
 			// flush the style
-			ht.getStyle(ev.target, "display");
-			ev.target.className = ev.target.className.replace(/(hux_tAppear)Init/, "$1");
+			ht.flushStyle(target);
+			target.className = target.className.replace(/(hux_tAppear)Init/, "$1");
+			var ms = ht.getDuration(target);
+			setTimeout(function(){
+				target.className = target.className.replace("hux_tAppear", "");
+			}, ms);
 		},
 		hasClass: function(target, className){
 			return new RegExp("(^|\\s)"+className+"($|\\s)").test(target.className);

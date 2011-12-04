@@ -83,7 +83,6 @@
 					target.parentNode.removeChild(target);
 					ht.makeAppear(ev);
 				}, ms);
-				
 			}
 		},
 		makeAppear: function(ev){

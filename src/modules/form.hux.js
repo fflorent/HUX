@@ -40,6 +40,13 @@ HUX.Form = {
 	 */
 	clearAfterSubmit: true,
 	/**
+	 * Variable: async 
+	 * {Boolean} are the requests asynchronous ? 
+	 * 
+	 * Default: true
+	 */
+	async: true,
+	/**
 	 * Function: init
 	 * inits the module. Calls addLiveListener.
 	 * 
@@ -60,6 +67,7 @@ HUX.Form = {
 				HUX.Compat.addEventListener(el, "submit", function(ev){
 					var form = HUX.Compat.getEventTarget(ev);
 					HUX.Form.submit(form);
+					HUX.Compat.preventDefault(ev);
 				});
 			});
 		});
@@ -106,18 +114,18 @@ HUX.Form = {
 		try{
 			var arrData = [], opt;
 			// we fill the option object
-			if(arg1.nodeType === 1 && arg1.tagName === "form"){
+			if(arg1.nodeType === 1 && arg1.tagName === "FORM"){
 				opt = {
 					data:null, // set below
-					url:form.action,
-					method:form.getAttribute("method"),
-					async:true,
-					filling:HUX.HUXattr.getFillingMethod(form) || HUX.Form.defaultFilling,
-					target:HUX.HUXattr.getTarget(form) || undefined/*, // 
+					url:arg1.action,
+					method:arg1.getAttribute("method"),
+					async:HUX.Form.async,
+					filling:HUX.HUXattr.getFillingMethod(arg1) || HUX.Form.defaultFilling,
+					target:HUX.HUXattr.getTarget(arg1) || undefined/*, // 
 					srcElement:form // ????*/
 				};
 				// we fill arrData : 
-				HUX.Selector.byAttribute("*", "name", form, function(el){
+				HUX.Selector.byAttribute("*", "name", arg1, function(el){
 					HUX.Form.serialize(el, arrData);
 				});
 				
@@ -129,7 +137,7 @@ HUX.Form = {
 			
 			// we call the XHR method
 			HUX.xhr(opt);
-			HUX.Compat.preventDefault(ev);
+			
 		}
 		catch(ex){
 			HUX.logError(ex);

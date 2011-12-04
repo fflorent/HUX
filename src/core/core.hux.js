@@ -46,7 +46,6 @@ window.HAPI = {};
 
 /**
  * Namespace: HUX Core
- * NOTE : all methods or attributes beginning with __ (for example : HUX.HUXEvents.__arrEv) should not be used elsewhere than in their namespace
  */
 var HUX = {
 	/**
@@ -270,6 +269,7 @@ var HUX = {
 		return function(){
 			var a = [ orig ];
 			orig.args = arguments; // the original arguments are set as fnOrig.args
+			orig.execute = function(){ orig.apply(this, orig.args); }; // method to execute the proxied function
 			Array.prototype.push.apply(a, arguments);
 			return fn.apply(this, a);
 		};
@@ -284,19 +284,20 @@ var HUX = {
 	 *  - *requestError* : triggered if an XMLHttpRequest failed. 1 argument : event.xhr = the XHR object
 	 *  - *loading* : triggered when a HUX request is running. 1 argument : event.target = the target of the HUX request
 	 */
-	HUXEvents:{
+	HUXEvents: (function(){
+		/** =================== PRIVATE ================== **/ 
+		
 		// array of listener for each event
-		__arrEv:{
+		var arrEv = {
 			"beforeInject":{"global":[]}, 
 			"beforeEmpty":{"global":[]},
 			"requestError":{"global":[]},
 			"afterInject":{"global":[]},
 			"loading":{"global":[]},
 			"prepareLoading":{"global":[]}
-		},
+		};
 
-		__addListener: function(key, evName, fn){
-			var arrEv = this.__arrEv;
+		var addListener = function(key, evName, fn){
 			if(arrEv[evName]){
 				if(! (key in arrEv[evName]) )
 					arrEv[evName][key] = [];
@@ -304,16 +305,26 @@ var HUX = {
 			}
 			else
 				throw new Error("the event "+evName+" does not exist for HUX");
-		},
-		__removeListener: function(key, evName, fn){
-			HUX.removeElement(this.__arrEv[evName][key], fn);
-		},
+		};
+		var removeListener = function(key, evName, fn){
+			HUX.removeElement(arrEv[evName][key], fn);
+		};
 		// get the listeners of an event safely
-		__getListeners: function(evName, tid){
-			var lis = this.__arrEv[ evName ];
-			// if this.__arrEv[ evName ][ tid ] does not exist, we return an empty array
+		var getListeners = function(evName, tid){ 
+			var lis = arrEv[ evName ];
+			// if arrEv[ evName ][ tid ] does not exist, we return an empty array
 			return ( lis && tid in lis ) ? lis[ tid ] : [];
-		},
+		};
+		// check if the target has an id. If not, throws an exception
+		var checktid = function(callerName, target){
+			if(!target.id)
+				throw new Error(callerName+": first argument must be an HTMLElement with an id");
+			
+		};
+		
+		/** ==================== PUBLIC ==================== **/
+		
+		var pub = {};
 		/**
 		 * Function: bindGlobal
 		 * binds an event listener for all elements
@@ -322,9 +333,9 @@ var HUX = {
 		 * 	- *evName*: {String} the event Name
 		 * 	- *fn*: {Function} the event listener
 		 */
-		bindGlobal: function(evName, fn){
-			return this.__addListener("global", evName, fn);
-		},
+		pub.bindGlobal = function(evName, fn){// public
+			return addListener("global", evName, fn);
+		};
 		/**
 		 * Function: unbindGlobal
 		 * unbind an event listener that have been bound 
@@ -333,15 +344,10 @@ var HUX = {
 		 * 	- *evName*: {String} the event Name
 		 * 	- *fn*: {Function} the event listener to remove
 		 */
-		unbindGlobal: function(evName, fn){
-			return this.__removeListener("global", evName, fn);
-		},
-		// check if the target has an id. If not, throws an exception
-		__checktid: function(callerName, target){
-			if(!target.id)
-				throw new Error(callerName+": first argument must be an HTMLElement with an id");
-			
-		},
+		pub.unbindGlobal = function(evName, fn){// public
+			return removeListener("global", evName, fn);
+		};
+		
 		/**
 		 * Function: bind
 		 * sort of addEventListener
@@ -351,10 +357,10 @@ var HUX = {
 		 * 	- *evName* : {String} the name of the event
 		 * 	- *fn* : {Function} the listener
 		 */
-		bind:function(target, evName, fn){
-			this.__checktid("HUXEvents.bind", target);
-			return this.__addListener(target.id, evName, fn);
-		},
+		pub.bind = function(target, evName, fn){// public
+			checktid("HUXEvents.bind", target);
+			return addListener(target.id, evName, fn);
+		};
 		/**
 		 * Function: unbind
 		 * sort of removeEventListener
@@ -364,10 +370,10 @@ var HUX = {
 		 * 	- *evName* : {String} the name of the event
 		 * 	- *fn* : {Function} the listener to remove
 		 */
-		unbind: function(target, evName, fn){
-			this.__checktid("HUXEvents.unbind", target);
-			return this.__removeListener(target.id, evName, fn);
-		},
+		pub.unbind = function(target, evName, fn){// public
+			checktid("HUXEvents.unbind", target);
+			return removeListener(target.id, evName, fn);
+		};
 		/**
 		 * Function: trigger
 		 * trigger all event Listener for a specific event 
@@ -377,14 +383,14 @@ var HUX = {
 		 * 	- *event* : {HUX Event Object} object with information about the event 
 		 * NOTE : if the event has a target, put it as event.target
 		 */
-		trigger: function(evName, event, callback){
+		pub.trigger = function(evName, event, callback){// public
 			try{
-				var lsters = [], tid = (event.target?event.target.id : null), arrEv = this.__arrEv;
+				var lsters = [], tid = (event.target?event.target.id : null), arrEv = arrEv;
 				// we merge the listeners for the specific element and the listeners for "global"
 				
 				if(tid)
-					lsters = lsters.concat( this.__getListeners(evName, tid) );
-				lsters = lsters.concat( this.__getListeners(evName, "global") );
+					lsters = lsters.concat( getListeners(evName, tid) );
+				lsters = lsters.concat( getListeners(evName, "global") );
 				
 				event.type = evName;
 				
@@ -405,7 +411,7 @@ var HUX = {
 			catch(ex){
 				HUX.logError(ex);
 			}
-		},
+		};
 		/**
 		 * Function: createEventType
 		 * creates a new event type
@@ -416,23 +422,60 @@ var HUX = {
 		 * Returns:
 		 * 	- {Boolean} true if the event type has been created successfully
 		 */
-		createEventType: function(evName){
-			// if this.__arrEv is not undefined nor null
-			if( this.__arrEv[evName] )
+		pub.createEventType = function(evName){// public
+			// if arrEv is not undefined nor null
+			if( arrEv[evName] )
 				return false; // we do not create the same event type twice
 			// normal case
-			this.__arrEv[evName] = {"global":[]};
+			arrEv[evName] = {"global":[]};
 			
 			return true;
-		}
-	},
+		};
+		return pub;
+	})(),
 
 	/**
 	 * Namespace; Inject
 	 * 
 	 * DOM Injection manager. 
 	 */
-	Inject:{
+	Inject:(function(){
+		/** =================== PRIVATE ================== **/ 
+		var checkTarget = function(target, methodName){
+			if(!target)
+				throw new Error(methodName+" filling method requires a target element");
+		},
+	 	
+		fillingMethods = {
+			prepend: function(content, target){
+				var aInserted;
+				checkTarget( target, "prepend");
+				if(target.childNodes.length > 0){ // we use InsertBefore
+					firstChild = target.firstChild;
+					aInserted = target.insertBefore(content, firstChild);
+				}
+				else{ // if target has no children, we append 
+					aInserted = target.appendChild(content);
+				}
+				return aInserted;
+			},
+			append: function(content, target){
+				var aInserted;
+				checkTarget(target, "append");
+				target.appendChild(content);
+				aInserted = target.childNodes;
+				return aInserted;
+			},
+			replace: function(content, target){
+				checkTarget(target, "replace");
+				pub.empty(target);
+				return pub.proceed(target, "append", content);
+			}
+		};
+		
+		
+		
+		/** =================== PUBLIC ================== **/ 
 		
 		/**
 		 * Function: proceed
@@ -450,41 +493,35 @@ var HUX = {
 		 * Returns:
 		 * 	- {NodeList of Elements} the inserted elements
 		 */
-		proceed: function(target, method, content){
+		var pub = {};
+		pub.proceed = function(target, method, content){
 			if(typeof content !== "string" && content.nodeType !== undefined) // if content is a node
-				content = this.forceDocumentFragment( content );
-			return this.__fillingMethods[ method ].call(this, content, target || null);
-		},
-		__checkTarget: function(target, methodName){
-			if(!target)
-				throw new Error(methodName+" filling method requires a target element");
-		},
-		__fillingMethods: {
-			prepend: function(content, target){
-				var aInserted;
-				this.__checkTarget( target, "prepend");
-				if(target.childNodes.length > 0){ // we use InsertBefore
-					firstChild = target.firstChild;
-					aInserted = target.insertBefore(content, firstChild);
-				}
-				else{ // if target has no children, we append 
-					aInserted = target.appendChild(content);
-				}
-				return aInserted;
-			},
-			append: function(content, target){
-				var aInserted;
-				this.__checkTarget(target, "append");
-				target.appendChild(content);
-				aInserted = target.childNodes;
-				return aInserted;
-			},
-			replace: function(content, target){
-				this.__checkTarget(target, "replace");
-				this.empty(target);
-				return this.proceed(target, "append", content);
+				content = pub.forceDocumentFragment( content );
+			return fillingMethods[ method ].call(this, content, target || null);
+		};
+		/**
+		 * Function: injectIntoDocFrag
+		 * injects the nodeList (or any enumerable object of DOM elements) in a DocumentFragment
+		 * and returns the last.
+		 * 
+		 * Parameters:
+		 * 	- *nodes* : {NodeList} the nodes
+		 * 
+		 * Returns:
+		 * 	- {DocumentFragment} the DocumentFragment with the cloned nodes
+		 */
+		pub.injectIntoDocFrag = function(nodes){
+			var frag = document.createDocumentFragment();
+			var i = 0;
+			for(var i = 0;  i < nodes.length; i++){
+				
+				frag.appendChild( nodes[i]);
+				pub.pauseMedias(nodes[i])
+				
 			}
-		},
+			delete nodes;
+			return frag;
+		};
 		/**
 		 * Function: setFillingMethod
 		 * sets a function for a filling method.
@@ -511,17 +548,18 @@ var HUX = {
 		 * >	}, true); // we have to set requiresTarget to true because we need target
 		 * 
 		 */
-		setFillingMethod: function( method, fn, requiresTarget){
+		pub.setFillingMethod = function( method, fn, requiresTarget){
 			var _fn = fn;
 			if(requiresTarget){
-				// we create a proxy to call __checkTarget before calling the original function
+				// we create a proxy to call checkTarget before calling the original function
 				_fn = function(DOMContent, target){
-					this.__checkTarget(target, method);
+					checkTarget(target, method);
 					return fn.apply(this, arguments);
 				}
 			}
-			this.__fillingMethods[ method ] = _fn;
-		},
+			fillingMethods[ method ] = _fn;
+		};
+		
 		/**
 		 * Function: forceDocumentFragment
 		 * if DOMContent is a document, converts *node* to a DocumentFragment, or return *node* as is otherwise.
@@ -532,17 +570,17 @@ var HUX = {
 		 * Returns:
 		 * 	- {DocumentFragment} the DocumentFragment converted (or *node* as is if it was already a DocumentFragment)
 		 */
-		forceDocumentFragment: function(doc){
+		pub.forceDocumentFragment = function(doc){
 			var ret = doc, content;
 			if(doc.nodeType === document.DOCUMENT_NODE){
 				content = [];
 				HUX.Compat.forEach(doc.childNodes, function(c){
 					content.push( c );
 				});
-				ret = this.injectIntoDocFrag( content );
+				ret = pub.injectIntoDocFrag( content );
 			}
 			return ret;
-		},
+		};
 		/**
 		 * Function: empty
 		 * removes each child of parent
@@ -550,10 +588,10 @@ var HUX = {
 		 * Parameters:
 		 * 	- *parent* : {Element} the parent to empty
 		 */
-		empty: function(parent){
+		pub.empty = function(parent){
 			var child;
 			HUX.HUXEvents.trigger("beforeEmpty", {target: parent});
-			this.pauseMedias(parent);
+			pub.pauseMedias(parent);
 			/*if(window.Audio !== undefined){
 				HUX.Compat.forEach(parent.querySelectorAll("audio, video"), function(media){
 					media.pause();
@@ -564,7 +602,8 @@ var HUX = {
 				delete child;
 			}
 			
-		},
+		};
+		
 		/**
 		 * Function: pauseMedias
 		 * Pause any media in parent. 
@@ -572,7 +611,7 @@ var HUX = {
 		 * 
 		 * 
 		 */
-		pauseMedias: function(parent){
+		pub.pauseMedias = function(parent){
 			// we pause any HTMLMediaElement before emptying ( https://bugzilla.mozilla.org/show_bug.cgi?id=594748 )
 			if(window.Audio === undefined)
 				return;
@@ -584,31 +623,8 @@ var HUX = {
 				});
 			}
 			
-		},
-		/**
-		 * Function: injectIntoDocFrag
-		 * injects the nodeList (or any enumerable object of DOM elements) in a DocumentFragment
-		 * and returns the last.
-		 * 
-		 * Parameters:
-		 * 	- *nodes* : {NodeList} the nodes
-		 * 
-		 * Returns:
-		 * 	- {DocumentFragment} the DocumentFragment with the cloned nodes
-		 */
-		injectIntoDocFrag: function(nodes){
-			var frag = document.createDocumentFragment();
-			var i = 0;
-			for(var i = 0;  i < nodes.length; i++){
-				// depending on the parentNode, the NodeList can remove nodes[ i ] once it is appended somewhere else
-				// so, we use cloneNode(true), even if it is less optimized
-				frag.appendChild( nodes[i].cloneNode(true) );
-				this.pauseMedias(nodes[i])
-				delete nodes[i];
-			}
-			delete nodes;
-			return frag;
-		},
+		};
+
 		
 		/**
 		 * Function: htmltodom
@@ -618,19 +634,24 @@ var HUX = {
 		 * 
 		 * Parameters:
 		 * 	- *sHtml* : {String} String containing HTML
-		 * 	- *context* : {Element} the element designed to receive the content (optional)
+		 * 	- *context* : {Element} the element designed to receive the content
 		 * 
 		 * Returns:
 		 * 	- {DocumentFragment} a DocumentFragment with the generated Elements
 		 */
-		htmltodom: function(sHtml, context){
-			var parent = context ? context.cloneNode(false) : document.createElement('div');
+		pub.htmltodom = function(sHtml, context){
+			
 			var ret;
+			if(context === undefined || ! context.nodeType)
+				throw "htmltodom : context is required and must be a node";
+			
 			if(window.Range !== undefined && Range.prototype.createContextualFragment !== undefined){ // better performance with createContextualFragment since we need to return the children
-				var range = document.createRange();
+				var doc = (context !== undefined ? context.ownerDocument : document), range = doc.createRange();
+				range.selectNodeContents(context); // required by Chrome
 				ret = range.createContextualFragment(sHtml);
 			}
 			else{ // IE ...
+				var parent = context ? context.cloneNode(false) : document.createElement('div');
 				try{
 					parent.innerHTML = sHtml;
 				}
@@ -638,8 +659,8 @@ var HUX = {
 					// IE doesn't allow using innerHTML with table,
 					// but allows create a div element in which we inject the HTML String of a TABLE
 					if(parent.tagName === "TABLE" ){
-						if(/^<(tr|tbody)/i.test(sHTML)){
-							parent = this.htmltodom("<TABLE>"+sHtml+"</TABLE>", context).firstChild;
+						if(/^<(tr|tbody)/i.test(sHtml)){
+							parent = pub.htmltodom("<TABLE>"+sHtml+"</TABLE>", document.createElement("div")).firstChild;
 						}
 						else{
 							HUX.logError("TABLE element can only have TR and TBODY elements as direct children");
@@ -648,12 +669,15 @@ var HUX = {
 					else
 						HUX.logError(e);
 				}
-				ret = this.injectIntoDocFrag(parent.childNodes);
+				ret = pub.injectIntoDocFrag(parent.childNodes);
 				parent = null;
 			}
 			return ret;
-		}
-	},
+		};
+		
+		return pub;
+		
+	})(),
 	
 	/**
 	 * Function: inject
@@ -698,29 +722,38 @@ var HUX = {
 				HUX.HUXEvents.trigger("afterInject", {target: target || document.body, children: aInserted});
 			}
 		});
-		
 	},
 	/**
 	 * Namespace: Selector
 	 * DOM Selector Tool
 	 */
-	Selector: {
-		__prefixTN: "",
+	Selector: (function(){
+		var prefixTN = "";
+		
+		/**
+		 * IE does not implement document.evaluate
+		 * This function is a fallback for Selector.byAttribute
+		 */
+		var byAttributeIE = function(tagName, attr, context, fnEach){
+			var fnFilter = function(el){  return el.getAttribute(attr);  }; // NOTE : IE7 returns "" if the attribute does not exist
+			return pub.filterIE(tagName, fnFilter, context, fnEach);
+		};
 		/**
 		 * Function: init
 		 * inits the module
 		 */
-		init: function(){
+		var pub = {};
+		pub.init = function(){
 			// check whether we are using html or xhtml ...
 			if(document.evaluate !== undefined){
 				if( this.evaluate("/html").length > 0 )
-					this.__prefixTN = "";
+					prefixTN = "";
 				else if(this.evaluate("/xhtml:html").length > 0)
-					this.__prefixTN = "xhtml:";
+					prefixTN = "xhtml:";
 				else
 					throw new Error("Document non supported by HUX");
 			}
-		},
+		};
 		/**
 		 * Function: prefixTagName
 		 * adds the prefix for the element depending on the document type (html or xhtml)
@@ -732,9 +765,9 @@ var HUX = {
 		 * Returns:
 		 * 	- {String} the prefixed tagName
 		 */
-		prefixTagName: function(tagName){
-			return this.__prefixTN+tagName;
-		},
+		pub.prefixTagName= function(tagName){
+			return prefixTN+tagName;
+		};
 		/**
 		 * Function: byAttribute
 		 * Selects elements by their attributes
@@ -748,15 +781,15 @@ var HUX = {
 		 * Returns:
 		 * 	- {Array of Element} the elements found
 		 */
-		byAttribute: function(tagName, attr, context, fnEach){
-			var xpath, prefixedTN = this.prefixTagName(tagName);
+		pub.byAttribute = function(tagName, attr, context, fnEach){
+			var xpath, prefixedTN = pub.prefixTagName(tagName);
 			if(typeof document.evaluate !== "undefined"){
 				xpath = "//"+prefixedTN+"[@"+attr+"]";
-				return this.evaluate(xpath, context, fnEach);
+				return pub.evaluate(xpath, context, fnEach);
 			}
 			else
-				return this.__byAttributeIE(tagName, attr, context, fnEach);
-		},
+				return byAttributeIE(tagName, attr, context, fnEach);
+		};
 		
 		/**
 		 * Function: byAttributeHUX
@@ -771,22 +804,21 @@ var HUX = {
 		 * Returns:
 		 * 	- {Array of Element} the elements found
 		 */
-		byAttributeHUX: function(tagName, attr, context, fnEach){
+		pub.byAttributeHUX = function(tagName, attr, context, fnEach){
 			var xpath, prefixedTN, attrs = HUX.HUXattr.getAttrAllPrefixes(attr), sAttrXP, ieRet = [];
-			prefixedTN = this.prefixTagName(tagName);
+			prefixedTN = pub.prefixTagName(tagName);
 			if(typeof document.evaluate !== "undefined"){
 				sAttrXP = attrs.join(" or @"); // sAttrXP = "data-attr OR @data-hux-attr OR @hux:attr"
 				xpath = "./descendant-or-self::"+prefixedTN+"[@"+sAttrXP+"]";
-				return this.evaluate(xpath, context, fnEach);
+				return pub.evaluate(xpath, context, fnEach);
 			}
 			else{
-				var self= this;
 				HUX.Compat.forEach(attrs, function(attr){
-					ieRet = ieRet.concat( self.__byAttributeIE.call(self, tagName, attr, context, fnEach) );
+					ieRet = ieRet.concat( byAttributeIE(tagName, attr, context, fnEach) );
 				});
 				return ieRet;
 			}
-		},
+		};
 		/**
 		 * Function:nsResolver
 		 * function used by document.evaluate in <evaluate> for namespaces
@@ -797,7 +829,7 @@ var HUX = {
 		 * Returns :
 		 * 	- {String} the namespace
 		 */
-		nsResolver:function(prefix){
+		pub.nsResolver = function(prefix){
 			var ns = {
 				"hux":HUX.namespace,
 				"xhtml":"http://www.w3.org/1999/xhtml"
@@ -805,7 +837,7 @@ var HUX = {
 			if(!prefix)
 				return ns.xhtml;
 			return ns[prefix];
-		},
+		};
 		/**
 		 * Function: evaluate
 		 * 
@@ -825,10 +857,10 @@ var HUX = {
 		 * Returns: 
 		 * 	- {Array of Element} the elements found
 		 */
-		evaluate:function(sXpath, context, fnEach){
+		pub.evaluate = function(sXpath, context, fnEach){
 			context = context || document;
 			fnEach = fnEach || function(){};
-			var results = document.evaluate(sXpath, context, this.nsResolver, XPathResult.ANY_TYPE, null); 
+			var results = document.evaluate(sXpath, context, pub.nsResolver, XPathResult.ANY_TYPE, null); 
 			var thisResult;
 			var ret = [];
 			while ( (thisResult = results.iterateNext()) !== null) {
@@ -836,15 +868,7 @@ var HUX = {
 				fnEach(thisResult);
 			}
 			return ret;
-		},
-		/**
-		 * IE does not implement document.evaluate
-		 * This function is a fallback for Selector.byAttribute
-		 */
-		__byAttributeIE: function(tagName, attr, context, fnEach){
-			var fnFilter = function(el){  return el.getAttribute(attr);  }; // NOTE : IE7 returns "" if the attribute does not exist
-			return this.filterIE(tagName, fnFilter, context, fnEach);
-		},
+		};
 		/**
 		 * Function: filterIE
 		 * IE does not implement document.evaluate. So, this function is a generic fallback
@@ -865,7 +889,7 @@ var HUX = {
 		 * >	};
 		 * >	filterIE("a", fnFilter, document.getElementById("foo"), fnEach);
 		 */
-		filterIE: function(tagName, fnFilter, context, fnEach){
+		pub.filterIE = function(tagName, fnFilter, context, fnEach){
 			var ret = [], elts;
 			context = context || document;
 			fnEach = fnEach || function(){};
@@ -879,71 +903,19 @@ var HUX = {
 				}
 			}, this);
 			return ret;
-		}
-	},
+		};
+		return pub;
+	})(),
 	/**
 	 * Namespace: XHR
 	 * Prefer use directly <HUX.xhr> instead
 	 */
-	XHR: {
-		// see HUX.xhr(opt)
-		proceed: function(opt){
-			if(! opt.url.length === 0)
-				throw new TypeError("invalid arguments");
+	XHR: (function(){
+		/** =================== PRIVATE ================== **/ 
+		var setReadystatechange = function(xhr, filling, target, opt){
 			try{
-				var data = null, xhr;
-				// mainly for stageclassmgr
-				HUX.HUXEvents.trigger("prepareLoading", {target: (opt.target || document.body) });
-				// default value for opt.async is true
-				if(opt.async === undefined)
-					opt.async = true;
-				// we get the XHR Object
-				xhr = this.getXhrObject();
-				
-				// we add GET parameters to the URL. If there are some already, we add a "&"+opt.data to the string. Otherwise, we add "?"+opt.data
-				if(opt.method.toLowerCase() === "get" && opt.data)
-					opt.url += (opt.url.indexOf("?") >= 0 ? "&" : "?") +opt.data;
-				else if(opt.method.toLowerCase() === "post")
-					data = opt.data || null; // if opt.data is undefined, we set it to null
-				// is there connection parameters ?
-				if( opt.username )
-					xhr.open(opt.method, opt.url, opt.async, opt.username, opt.password);
-				else
-					xhr.open(opt.method, opt.url, opt.async);
-				// 
-				this.setReadystatechange(xhr, opt.filling, opt.target, opt);
-				xhr.setRequestHeader("Content-Type", opt.contentType || "application/x-www-form-urlencoded");
-				// if the user set requestHeaders
-				if(opt.requestHeaders){
-					for(var hName in opt.requestHeaders)
-						xhr.setRequestHeader(hName, opt.requestHeaders[hName]);
-				}
-					
-				// we trigger the event "loading"
-				HUX.HUXEvents.trigger("loading", {target: (opt.target || document.body) });
-				xhr.send(data);
-				return xhr;
-			}
-			catch(ex){
-				HUX.logError(ex); // 
-			}
-		},
-		// taken from jQuery, returns an XMLHttpRequest object
-		getXhrObject: function(){
-			return window.ActiveXObject ? new ActiveXObject("Microsoft.XMLHTTP") : new XMLHttpRequest();
-		},
-		
-		onSuccess: function(xhr, filling, target){
-			HUX.inject(target, filling, (xhr.responseXML && xhr.responseXML.documentElement)? xhr.responseXML : xhr.responseText);
-		},
-		onError: function(xhr, filling, target){
-			HUX.HUXEvents.trigger("requestError", {xhr:xhr,filling:filling,target:target});
-		},
-		setReadystatechange: function(xhr, filling, target, opt){
-			try{
-				var self = this, 
-					onSuccess = opt.onSuccess || self.onSuccess,
-					onError = opt.onError || self.onError;
+				var onSuccess = opt.onSuccess || pub.onSuccess,
+				    onError = opt.onError || pub.onError;
 				xhr.onreadystatechange = function(){
 					try{
 						if(xhr.readyState  === 4){
@@ -961,8 +933,69 @@ var HUX = {
 			catch(ex){
 				HUX.logError(ex);
 			}
-		}
-	},
+		},
+		// taken from jQuery, returns an XMLHttpRequest object
+		getXhrObject = function(){
+			return window.ActiveXObject ? new ActiveXObject("Microsoft.XMLHTTP") : new XMLHttpRequest();
+		};
+		
+		
+		
+		/** =================== PUBLIC ================== **/ 
+		var pub = {};
+		// see HUX.xhr(opt)
+		pub.proceed = function(opt){
+			if(! opt.url.length === 0)
+				throw new TypeError("invalid arguments");
+			if(typeof opt.target === "string") // if opt.target is an id string, get the matching element 
+				opt.target = document.getElementById(opt.target);
+			try{
+				var data = null, xhr;
+				// mainly for stageclassmgr
+				HUX.HUXEvents.trigger("prepareLoading", {target: (opt.target || document.body) });
+				// default value for opt.async is true
+				if(opt.async === undefined)
+					opt.async = true;
+				// we get the XHR Object
+				xhr = getXhrObject();
+				
+				// we add GET parameters to the URL. If there are some already, we add a "&"+opt.data to the string. Otherwise, we add "?"+opt.data
+				if(opt.method.toLowerCase() === "get" && opt.data)
+					opt.url += (opt.url.indexOf("?") >= 0 ? "&" : "?") +opt.data;
+				else if(opt.method.toLowerCase() === "post")
+					data = opt.data || null; // if opt.data is undefined, we set it to null
+				// is there connection parameters ?
+				if( opt.username )
+					xhr.open(opt.method, opt.url, opt.async, opt.username, opt.password);
+				else
+					xhr.open(opt.method, opt.url, opt.async);
+				// 
+				setReadystatechange(xhr, opt.filling, opt.target, opt);
+				xhr.setRequestHeader("Content-Type", opt.contentType || "application/x-www-form-urlencoded");
+				// if the user set requestHeaders
+				if(opt.requestHeaders){
+					for(var hName in opt.requestHeaders)
+						xhr.setRequestHeader(hName, opt.requestHeaders[hName]);
+				}
+					
+				// we trigger the event "loading"
+				HUX.HUXEvents.trigger("loading", {target: (opt.target || document.body) });
+				xhr.send(data);
+				return xhr;
+			}
+			catch(ex){
+				HUX.logError(ex); // 
+			}
+		};
+		
+		pub.onSuccess = function(xhr, filling, target){
+			HUX.inject(target, filling, (xhr.responseXML && xhr.responseXML.documentElement)? xhr.responseXML : xhr.responseText);
+		};
+		pub.onError = function(xhr, filling, target){
+			HUX.HUXEvents.trigger("requestError", {xhr:xhr,filling:filling,target:target});
+		};
+		return pub;
+	})(),
 	/* 
 	 * Function: xhr
 	 * does an XMLHttpRequest
@@ -985,18 +1018,20 @@ var HUX = {
 	 * 	- *opt.onError* : {Function} function to trigger if the request fails (optional)
 	 */
 	xhr: function(opt){
-		if(typeof opt.target === "string") // if it is an id string, get the matching element 
-			opt.target = document.getElementById(opt.target);
-		return this.XHR.proceed.apply(this.XHR, arguments);
+		return HUX.XHR.proceed(opt);
 	},
 	/**
 	 * Namespace: HUXattr
 	 * Attribute Manager for HUX
 	 */
-	HUXattr: {
-		__getAttributeNS: function(srcElement, name){
+	HUXattr: (function(){
+		/** =================== PRIVATE ================== **/ 
+		var getAttributeNS = function(srcElement, name){
 			return srcElement.getAttributeNS ? srcElement.getAttributeNS(HUX.namespace, name) : srcElement.getAttribute("hux:"+name);
-		},
+		};
+	   
+		/** =================== PUBLIC ================== **/ 
+		var pub = {};
 		/**
 		 * Function: getAttributeHUX
 		 * returns the attribute value whatever the HUX prefix is
@@ -1008,17 +1043,17 @@ var HUX = {
 		 * Returns : 
 		 * 	- {String} the value of the attribute
 		 */
-		getAttributeHUX: function(el, name){
-			var ret = null,  attrs = this.getAttrAllPrefixes(name), i;
+		pub.getAttributeHUX = function(el, name){
+			var ret = null,  attrs = pub.getAttrAllPrefixes(name), i;
 			for(i = 0; i < attrs.length && ret === null; i++){
 				ret = el.getAttribute( attrs[i] );
 			}
 			if(ret === null) // this might be because of non-support of Opera for getAttribute("hux:...")
-				ret = this.__getAttributeNS(el, name);
+				ret = getAttributeNS(el, name);
 			if(ret === "") // correct odd behaviour of getAttributeNS, which returns "" if the attribute was not found
 				ret = null;
 			return ret;
-		},
+		};
 		/**
 		 * Function: getFillingMethod
 		 * extracts the filling method from an element
@@ -1029,9 +1064,9 @@ var HUX = {
 		 * Returns:
 		 * 	- {String} the value of the attribute
 		 */
-		getFillingMethod: function(el){
-			return this.getAttributeHUX(el, "filling");
-		},
+		pub.getFillingMethod = function(el){
+			return pub.getAttributeHUX(el, "filling");
+		};
 		/**
 		 * Function: getTarget
 		 * gets the target element from another element having the target attribute
@@ -1042,10 +1077,10 @@ var HUX = {
 		 * Returns:
 		 * 	- {Element} the value of the attribute
 		 */
-		getTarget: function(el){
-			var idTn = this.getAttributeHUX(el, "target");
+		pub.getTarget = function(el){
+			var idTn = pub.getAttributeHUX(el, "target");
 			return document.getElementById(idTn);
-		},
+		};
 		/**
 		 * Function: getAttrAllPrefixes
 		 * returns all the possible prefixed name for an attribute
@@ -1056,27 +1091,35 @@ var HUX = {
 		 * Returns: 
 		 * 	- {Array} all the possible prefixed name
 		 */
-		getAttrAllPrefixes: function(attr){
+		pub.getAttrAllPrefixes = function(attr){
 			return [
 				"data-hux-"+attr,
 				"data-"+attr,
 				"hux:"+attr
 				// removed non-prefixed attribute because of conflicts with target
 			];
-		}
+		};
+		return pub;
 		
-	},
+	})(),
 	/**
 	 * Namespace: Compat
 	 * functions for cross-browsers compatibilities
 	 */
-	Compat: {
+	Compat: (function(){
+		/** =================== PRIVATE ================== **/ 
 		// do we use addEventListener or attachEvent ?
-		__fn_addEventListener : (window.addEventListener? 'addEventListener':'attachEvent'),
-		__fn_removeEventListener : (window.removeEventListener ? 'removeEventListener':'detachEvent'),
-		// does the event name have to be prefixed with 'on' ? (yes with attachEvent, no with addEventListener)
-		__prefix_eventListener: (window.addEventListener? '':'on'),
-		__ie_listeners:{},
+		var fn_addEventListener = (window.addEventListener? 'addEventListener':'attachEvent'),
+		    fn_removeEventListener = (window.removeEventListener ? 'removeEventListener':'detachEvent'),
+		    // does the event name have to be prefixed with 'on' ? (yes with attachEvent, no with addEventListener)
+		    prefix_eventListener = (window.addEventListener? '':'on'),
+		    ie_listeners = {};
+		    
+		    
+		/** =================== PUBLIC ================== **/ 
+		
+		var pub = {};
+		
 		/**
 		 * Function: addEventListener
 		 * adds a DOM event listener to an element
@@ -1096,20 +1139,20 @@ var HUX = {
 		 * >	function liLoad(ev){ alert("page loaded") };
 		 * >	HUX.Compat.addEventListener(window, "load", liLoad );
 		 */
-		addEventListener: function(target, evName, fn){
-			evName = this.__prefix_eventListener+evName;
+		pub.addEventListener = function(target, evName, fn){
+			evName = prefix_eventListener+evName;
 			var listener = fn;
 			if( document.addEventListener === undefined ){
 				// we set currentTarget for IE
 				// TODO : place evName in the index
-				this.__ie_listeners[fn] = listener = function(ev){
+				ie_listeners[fn] = listener = function(ev){
 					ev.currentTarget = window.event.currentTarget = target;
 					return fn.apply(this, arguments);
 				}
 			}
 			
-			return target[this.__fn_addEventListener](evName, listener, false);
-		},
+			return target[fn_addEventListener](evName, listener, false);
+		};
 		
 		/**
 		 * Function: removeEventListener
@@ -1127,15 +1170,15 @@ var HUX = {
 		 * >	HUX.Compat.removeEventListener(window, "load", liLoad);
 		 * 
 		 */
-		removeEventListener: function(target, evName, fn){
+		pub.removeEventListener = function(target, evName, fn){
 			var listener = fn;
-			evName = this.__prefix_eventListener+evName;
+			evName = prefix_eventListener+evName;
 			if(document.addEventListener === undefined){
-				listener = this.__ie_listeners[fn] || fn;
-				// we cannot delete this.__ie_listeners since other element may also be listened
+				listener = ie_listeners[fn] || fn;
+				// we cannot delete ie_listeners since other element may also be listened
 			}
-			return target[this.__fn_removeEventListener](evName, listener, false);
-		},
+			return target[fn_removeEventListener](evName, listener, false);
+		};
 		/**
 		 * Function: addEventListenerOnce
 		 * adds an event listener and ensure that teh listener will be called only once
@@ -1150,10 +1193,10 @@ var HUX = {
 		 * 	- <addEventListener>
 		 * 	- <removeEventListener>
 		 */
-		addEventListenerOnce: function(){
-			this.removeEventListener.apply(this, arguments);
-			this.addEventListener.apply(this, arguments);
-		},
+		pub.addEventListenerOnce = function(){
+			pub.removeEventListener.apply(this, arguments);
+			pub.addEventListener.apply(this, arguments);
+		};
 		/**
 		 * Function: getEventTarget
 		 * returns the target of the DOM event
@@ -1172,9 +1215,9 @@ var HUX = {
 		 * >	HUX.Compat.addEventListener(document.body, "click", liClick);
 		 * 	
 		 */
-		getEventTarget: function(event){
+		pub.getEventTarget = function(event){
 			return event.currentTarget;
-		},
+		};
 		
 		/**
 		 * Function: preventDefault
@@ -1192,12 +1235,12 @@ var HUX = {
 		 * 
 		 * 
 		 */
-		preventDefault: function(ev){
+		pub.preventDefault = function(ev){
 			if(window.event === undefined) // not IE
 				ev.preventDefault();
 			else // IE
 				event.cancelBubble = event.returnValue = false;
-		},
+		};
 		/**
 		* Function: foreach
 		* do a for-each of the array
@@ -1211,12 +1254,14 @@ var HUX = {
 		* > 		alert(el.tagName); 
 		* > 	});
 		*/
-		forEach: Array.forEach || function(array, fn, t){
+		pub.forEach = Array.forEach || function(array, fn, t){
+			if(Array.prototype.forEach !== undefined )
+				Array.prototype.forEach.call(array, fn, t);
 			for(var i = 0; i < array.length; i++)
 				fn.call(t||this, array[i], i, array);
-		},
+		};
 		
-		indexOf: Array.indexOf || function(array, obj){
+		pub.indexOf = Array.indexOf || function(array, obj){
 			var ap = Array.prototype;
 			return ap.indexOf !== undefined? ap.indexOf.apply(arguments[0], Array.prototype.slice.call(arguments, 1)) : (function(){
 				for(var i = 0; i < array.length; i++){
@@ -1225,8 +1270,9 @@ var HUX = {
 				}
 				return -1;
 			})();
-		}
-	},
+		};
+		return pub;
+	})(),
 	/**
 	 * Namespace: Browser
 	 * information about the used browser

@@ -153,7 +153,7 @@
 				HUX.HUXEvents.bind(container, "afterInject", function(){
 					delayTimer();
 					arrFnCheck.SL.shift().call(this, container);
-					do{ 
+					do{  // we look for the next "a" element
 						a = a.nextSibling;
 					}while(a !== null && (typeof a.href === "undefined" /* <=>! (a instanceof HTMLAnchorElement)*/) );
 					if(a !== null)
@@ -166,13 +166,14 @@
 				simulateClick(a);
 			};
 			HUX.Form.clearAfterSubmit = false; // just keep the values and the innerHTML of the inputs
+			HUX.Form.async = false; // set requests asynchronous
 			var testForms = function(){
 				module("Forms");
 				var form, div= $id("interfaceForms"), container = $id("containerForm");
 				HUX.HUXEvents.bind(container, "afterInject", function(){
 					delayTimer();
 					arrFnCheck.Form.shift().call(this, container);
-					do{ 
+					do{ // we look for the next "form" element
 						form = form.nextSibling;
 					}while(form !== null && ! (typeof form.submit === "undefined" /* <=> !( form instanceof HTMLFormElement )*/) );
 					if(form !== null && form.submit)
@@ -190,7 +191,7 @@
 				HUX.HUXEvents.bindGlobal("afterHashChanged", function(){
 					delayTimer();
 					arrFnCheck.HM.shift().call(this, container);
-					do{
+					do{ // we look for the next "a" element
 						a = a.nextSibling;
 					}while(a !== null && (typeof a.href === "undefined" /* <=>! (a instanceof HTMLAnchorElement)*/) );
 					if(a !== null)

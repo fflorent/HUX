@@ -76,7 +76,7 @@ HUX.SimpleLoader = {
 
 HUX.addModule(HUX.SimpleLoader); 
 
-HUX.addToAPI("simpleload", function(target, url, filling /* optional */){
+HUX.addToAPI({"simpleload" : function(target, url, filling /* optional */){
 	HUX.xhr({
 		data:null,
 		url:url,
@@ -85,5 +85,5 @@ HUX.addToAPI("simpleload", function(target, url, filling /* optional */){
 		method: 'get',
 		async:true
 	});
-});
+}});
 

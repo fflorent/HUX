@@ -47,7 +47,6 @@ window.HAPI = {};
 
 /**
  * Namespace: HUX Core
- * NOTE : all methods or attributes beginning with __ (for example : HUX.HUXEvents.arrEv) should not be used elsewhere than in their namespace
  */
 var HUX = {
 	/**
@@ -94,22 +93,46 @@ var HUX = {
 		});
 	},
 	
-	addToAPI: function(name, func){
-		if(typeof name !== "string")
-			throw "First argument must be a string";
-		if(typeof func !== "function")
-			throw "Second argument must be a function";
-		var i, chunk, chunks = name.split('.'), cur = HAPI; 
-		for(i = 0; i < chunks.length-1; i++){// for each sub-namespace in name
-			chunk = chunks[i];
-			if(! (chunk in cur) )
-				cur[chunk] = {}; // we create a new object
-			if( typeof cur[ chunk ] === "function" )
-				throw "unable to to create HAPI."+name+" : HAPI."+chunks.slice(0,HUX.Compat.indexOf(chunk)).join('.')+" is not a namespace";
-			cur = cur[ chunk ];     // we go through
-		}
-		cur[ chunks[i] ] = func;      // we finally add func
-	},
+	addToAPI: (function(){
+		
+		var isObject = function(obj){
+			return obj.constructor === Object; 
+		    },
+		    merge = function(obj, branch){
+			for(var i in obj){
+				var o = obj[i];
+				if(isObject(o)){ // if o is an object
+					if(branch[i] === undefined) // if it is not present in the current branch of HAPI
+						branch[i] = {}; // we create a new branch
+					else if(branch[i] instanceof Function)
+						throw new Exception("cannot create "+i+" because a function with this name already exists");
+					merge(o, branch[i]);
+				}
+				else if(o instanceof Function){
+					branch[i] = o; // we add the function to the branch of HAPI
+				}
+				else
+					throw "the object must only have other objects or functions";
+			}
+		    };
+		
+		return function(obj){
+			/*
+			var i, chunk, chunks = name.split('.'), cur = HAPI; 
+			for(i = 0; i < chunks.length-1; i++){// for each sub-namespace in name
+				chunk = chunks[i];
+				if(! (chunk in cur) )
+					cur[chunk] = {}; // we create a new object
+				if( typeof cur[ chunk ] === "function" )
+					throw "unable to to create HAPI."+name+" : HAPI."+chunks.slice(0,HUX.Compat.indexOf(chunk)).join('.')+" is not a namespace";
+				cur = cur[ chunk ];     // we go through
+			}
+			cur[ chunks[i] ] = func;      // we finally add func*/
+			if(! isObject(obj))
+				throw "argument must be simple object, containing functions or other simple objects";
+			merge(obj, HAPI);
+		};
+	})(),
 	
 	/**
 	 * Function: addLiveListener
@@ -1309,7 +1332,7 @@ HUX.addModule( HUX );
 (function(){
 	//var isPublic = function(name){ return ! /^_/.test(name); };
 	// register Compat : 
-	HUX.Compat.forEach(["Compat", "HUXEvents", "Selector"], function(ns){
+	/*HUX.Compat.forEach(["Compat", "HUXEvents", "Selector"], function(ns){
 	
 		for(var name in HUX[ns]){
 			if( ! /^_/.test(name) )
@@ -1317,7 +1340,14 @@ HUX.addModule( HUX );
 		}
 	});
 	HUX.addToAPI("inject", HUX.inject);
-	HUX.addToAPI("xhr", HUX.xhr);
+	HUX.addToAPI("xhr", HUX.xhr);*/
+	HUX.addToAPI({
+		Compat: HUX.Compat, 
+		HUXEvents: HUX.HUXEvents,
+		Selector: HUX.Selector,
+		inject: HUX.inject,
+		xhr: HUX.xhr
+	});
 	
 })();
 
@@ -1403,7 +1433,7 @@ HUX.SimpleLoader = {
 
 HUX.addModule(HUX.SimpleLoader); 
 
-HUX.addToAPI("simpleload", function(target, url, filling /* optional */){
+HUX.addToAPI({"simpleload" : function(target, url, filling /* optional */){
 	HUX.xhr({
 		data:null,
 		url:url,
@@ -1412,7 +1442,7 @@ HUX.addToAPI("simpleload", function(target, url, filling /* optional */){
 		method: 'get',
 		async:true
 	});
-});
+}});
 
 /**
     HTTP Using XML (HUX) : SplitArray Class
@@ -2205,7 +2235,7 @@ HUX.Form = {
 	}
 }; 
 HUX.addModule(HUX.Form);
-HUX.addToAPI("submit", HUX.Form.submit);
+HUX.addToAPI({submit: HUX.Form.submit});
 
 
 /**

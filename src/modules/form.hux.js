@@ -145,6 +145,6 @@ HUX.Form = {
 	}
 }; 
 HUX.addModule(HUX.Form);
-HUX.addToAPI("submit", HUX.Form.submit);
+HUX.addToAPI({submit: HUX.Form.submit});
 
 

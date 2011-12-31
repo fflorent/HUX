@@ -5,7 +5,7 @@ MODULES=$(SRC)/modules
 CORE=$(SRC)/core/core.hux.js
 
 
-all: core simpleloader hashmgr hashmgr4indexing form scriptinjecter stageclassmgr overlay urlmgr urlmgrfallback transition 
+all: core simpleloader hashmgr hashmgr4indexing form scriptinjecter stageclassmgr overlay urlmgr urlmgrfallback # transition 
 	@@echo "generation done";
 all-dev: all checker
 

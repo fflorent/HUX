@@ -64,7 +64,7 @@ HUX.AudioTime = {
 	},
 	onPopState : function(event){
 		HUX.AudioTime.adjustTime(document);
-		console.log("AudioTime");
+		
 	}
 };
 

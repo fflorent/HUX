@@ -35,7 +35,6 @@
 		* get the computed style of an element
 		*/ 
 		getStyle: function(el, styleProp){
-			var func = new Function();
 			// IE
 			if (el.currentStyle)
 				return  el.currentStyle[styleProp] || "";
@@ -68,10 +67,14 @@
 			var target;
 			if( ht.hasClass(ev.target, "hux_transition") && ht.enabled ){
 				ev.target.className = ev.target.className.replace(/\s*hux_tAppear\s*/g, "");
-				target = ev.target.cloneNode(true);
+				target = ev.target.cloneNode(true); // we clone the target in order to display the clone while the original target is loading contents 
 				target.className += " hux_tVanishInit";
 				HUX.HUXEvents.trigger("transiting", {target:target});
-				ev.target.parentNode.insertBefore(target, ev.target);
+				// we insert after the target
+				if(ev.target.nextSibling !== undefined)
+					ev.target.parentNode.insertBefore(target, ev.target.nextSibling);
+				else
+					ev.target.parentNode.appendChild(target);
 				// this makes flush the style ...
 				ht.flushStyle(target);
 				

@@ -8,7 +8,7 @@
  */
 
 HUX.UrlMgrFb = {
-	enabled: history.pushState === undefined,
+	enabled: ! HUX.UrlMgr.enabled,
 	init: function(){
 		if(this.enabled){
 			HUX.addLiveListener(this);
@@ -36,4 +36,10 @@ HUX.UrlMgrFb = {
 	}
 	
 };
+(function(um){
+	um.setEnabled = HUX.wrapFn(um.setEnabled, function(fnOrig, val){
+		HUX.UrlMgrFb.enabled = !val;
+		return fnOrig.execute(um);
+	});
+})(HUX.UrlMgr);
 HUX.addModule(HUX.UrlMgrFb);

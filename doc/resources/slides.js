@@ -35,7 +35,7 @@ HUX.Slide = {
 			}
 			
 			if(elDir !== undefined && elDir.style.display !== "none")
-				self.simulateClick( elDir );
+				HUX.UrlMgr.changeAt(elDir.getAttribute("href"));
 		}
 	},
 	updateDirectionLink: function(link, numSlide){
@@ -43,15 +43,15 @@ HUX.Slide = {
 			link.style.display = "none";
 		else
 			link.style.display = "inline";
-		var replacement = (numSlide <= 0 ? "slide=__default": ("slide=s_"+numSlide));
-		link.href = link.getAttribute("href").replace(/slide=[^,]*/, replacement);
+		var replacement = (numSlide <= 0 ? "@-slide": ("@+slide=s_"+numSlide));
+		link.href = replacement;
 	},
 	updateDirectionLinks: function(slide){
 		var curSlide;
 		curSlide = this.slideNumber(slide);
 		this.updateDirectionLink( this.getNextLink(), curSlide+1 );
 		this.updateDirectionLink( this.getPrevLink(), curSlide-1 );
-	},
+	}/*,
 	simulateClick: function(link){
 		if("click" in link)
 			link.click();
@@ -63,7 +63,7 @@ HUX.Slide = {
 			0, 0, 0, 0, 0, false, false, false, false, 0, null);
 			link.dispatchEvent(evt);
 		}
-	}
+	}*/
 	
 };
 HUX.addModule(HUX.Slide);

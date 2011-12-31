@@ -33,10 +33,10 @@ HUX.HashMgr = {
 	// =============================
 	
 	/**
-	 * PrivateProperty: __hashObj
+	 * PrivateProperty: __pairs
 	 * {HashMap<String, String>} Split object of the current Hash. Matches each id with the URL of the content loaded.
 	 */
-	__hashObj:new HUX.PairManager(),
+	__pairs:null,
 	// the previous hash (private)
 	__prev_hash:location.hash,
 	// counter for exceptions
@@ -147,7 +147,7 @@ HUX.HashMgr = {
 	 * inits the module. 
 	 */
 	init:function(){
-		
+		this.__pairs = new HUX.PairManager(this.pairsCallbacks);
 		this.hashchangeEnabled = ( "onhashchange" in window) && (! document.documentMode || document.documentMode >= 8);
 		// if the IFrameHack is needed, we create immediatly the iframe 
 		if(this.IFrameHack.enabled)
@@ -160,7 +160,7 @@ HUX.HashMgr = {
 		// we listen to any anchor beginning with "#!" (corresponding to CCS3 Selector : a[href^="#!"])
 		HUX.addLiveListener(HUX.HashMgr);
 		// we treat location.hash
-		HUX.HashMgr.handler(null, true);
+		HUX.HashMgr.changeHash(null, true);
 		HUX.HUXEvents.createEventType("afterHashChanged");
 	},
 	/**
@@ -204,13 +204,13 @@ HUX.HashMgr = {
 			//info.push("diff");
 			try{
 				HUX.HashMgr.inTreatment = true;
-				HUX.HashMgr.handler(ev);
+				HUX.HashMgr.changeHash(hash);
 			}
 			catch(ex){
 				HUX.logError(ex);
 			}
 			finally{
-				HUX.HashMgr.__prev_hash = location.hash;
+				HUX.HashMgr.__prev_hash = hash; // even if there is an exeception, we ensure that __prev_hash is changed
 				HUX.HashMgr.inTreatment = false;
 				HUX.HUXEvents.trigger("afterHashChanged", {"new_hash":HUX.HashMgr.__prev_hash});
 			}
@@ -239,60 +239,52 @@ HUX.HashMgr = {
 	/**
 	 * Funtion: onClick
 	 * handles click event on anchors having href="#!...". 
-	 * Instead of replacing the hash, adds the href content in the hash.
+	 * directly treat the hash changement
 	 * 
 	 * Parameters:
 	 * 	- *ev* : {DOM Event}
 	 */
 	onClick:function(ev){
-		var srcElement = HUX.Compat.getEventTarget(ev);
-		location.hash += ( srcElement.hash || srcElement.getAttribute("href") ).replace(/^#/,",");
+		var srcElement = HUX.Compat.getEventTarget(ev), 
+		    hash = ( srcElement.hash || srcElement.getAttribute("href") ),
+		    hm = HUX.HashMgr;
+		//location.hash += ( srcElement.hash || srcElement.getAttribute("href") ).replace(/^#/,",");
+		hm.changeHash.call(hm, hash);
 		HUX.Compat.preventDefault(ev);
 	},
 	
 	/**
-	 * Function: updateHashSilently
-	 * update the hash silently, i.e. without triggering hashchange event
+	 * Function: updateHash
+	 * updates the hash
 	 * 
 	 * Parameters:
 	 * 	- *hash*: {String} the new hash to set 
-	 * 	- *keepPrevHash*: {Boolean} true if we correct the current URL (default: false)
+	 * 	- *keepPrevHash*: {Boolean} true if we do not change the current hash (default: false)
 	 */
-	updateHashSilently: function(hash, keepPrevHash){
+	updateHash: function(hash, keepPrevHash){
 		if( hash.replace(/^#/, "") !== location.hash.replace(/^#/, "") ){
-			
-			if(history.replaceState){
-				var fn = history[ keepPrevHash ? "pushState" : "replaceState" ];
-				fn.call(history, {}, document.title, hash);
-			}
-			else{
-				// we "cancel" the previous location.hash which may be incorrect
-				if(!keepPrevHash){ // keepPrevHash === true when called by init()
-					history.back();
-				}
-				location.hash = hash;
-			}
+			HUX.HashMgr.__prev_hash = hash; // necessary in order to prevent another execution of changeHash via handleIfChangement
+			location.hash = hash;
 		}
 		
 	},
 	/**
-	 * Function: handler
+	 * Function: changeHash
 	 * handles the hash modification
 	 * 
 	 * Parameters:
-	 * 	- *ev* : {DOM Event} event object for hashchange event. Can be null
+	 * 	- *sHash* : {String} the hash to treat. Can be null (default : location.hash)
 	 * 	- *keepPrevHash*: {Boolean} set to true if used by init, false otherwise.
 	 */
-	handler: function(ev, keepPrevHash){
-		
+	changeHash: function(sHash, keepPrevHash){
 		// what we name a pair here 
 		// is a pair "TARGET ID" : "URL" that you can find in the hash
-		var hash = location.hash.toString();
-		var newPM = HUX.PairManager.split(hash, /[#,]!([^=,]+)=([^=,]+)/g), self = this;
-		var normalHash = /,[^!]*$/.exec( location.hash ) || "";
-		this.__hashObj.compairWith(newPM, this.pairsCallbacks);
-		var sHash = "#"+this.__hashObj.map(function(e){return "!"+e.target+"="+e.url;}).join(",") +  normalHash;
-		this.updateHashSilently(sHash , keepPrevHash);
+		var hash = (sHash || location.hash).toString().replace(/^#,?/, "").split(/,[^!]/),
+		    sPairs = hash[0].split(/,/), // the pairs described in the hash 
+		    normalHash = hash[1] || ""; // the hash that usually lead to an anchor (is at the end of the hash, must not begin with a '!')
+		this.__pairs.change( sPairs );
+		var sHash = "#"+this.__pairs.map(function(e){return "!"+e.target+"="+e.url;}).join(",") +  normalHash;
+		this.updateHash(sHash, keepPrevHash);
 		HUX.HashMgr.IFrameHack.updateIFrame(); // only if IFrameHack enabled
 	},
 	

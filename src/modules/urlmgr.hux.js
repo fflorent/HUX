@@ -28,6 +28,9 @@ HUX.UrlMgr = {
 	NEW_CONTENT:2,
 	pairs: null,
 	enabled: !!history.pushState,
+	/**
+	 * Callbacks per action (add, delete or replace a pair in @...).
+	 */
 	pairsCallbacks: {
 		onAdd: function(added){
 			var sTarget = added.target, target = document.getElementById(sTarget), self = HUX.UrlMgr;
@@ -44,8 +47,9 @@ HUX.UrlMgr = {
 			if(target !== null){
 				return self.load(target, added.url);
 			}
-			else
+			else{
 				return false;
+			}
 		},
 		onDelete: function(deleted){
 			var sTarget = deleted.target, replacement = HUX.UrlMgr.__default_contents[sTarget];
@@ -65,7 +69,7 @@ HUX.UrlMgr = {
 	state:  null,
 	__default_contents : {},
 	init: function(){
-		this.pairs = HUX.PairManager.split((location.pathname.match(/[^@]@(.*)/) || ["",""])[1], /([^=,]+)=([^=,]+)/g, this.pairsCallbacks);
+		this.pairs = this.createPairMgr(this.pairsCallbacks);
 		if(! this.enabled )
 			return;
 		if(!this.getState() || ! ( (this.getState().HUXStates || null) instanceof Array) ){
@@ -80,6 +84,12 @@ HUX.UrlMgr = {
 		if( this.pairs.toString() !== ( location.pathname.match(/@.*/)||["@"] )[0] ){
 			this.pushState([], "", location.pathname.replace(/@.*/g, "") + this.pairs.toString());
 		}
+	},
+	setEnabled: function(value){
+		this.enabled = value;
+	},
+	createPairMgr: function(callbacks){
+		return HUX.PairManager.split((location.pathname.match(/[^@]@(.*)/) || ["",""])[1], /([^=,]+)=([^=,]+)/g, callbacks);
 	},
 	listen: function(context){
 		var self = HUX.UrlMgr;
@@ -102,7 +112,7 @@ HUX.UrlMgr = {
                         url:url,
                         method:'get',
                         async:this.asyncReq,
-                        filling:null, // use default option (replace)
+                        filling:"replace", 
                         target:target
                 };
 		
@@ -136,26 +146,27 @@ HUX.UrlMgr = {
 			return ret;
 		};
 	},
+// 	/**
+// 	 * extracts the target and the URL from a string
+// 	 */
+// 	splitPair: function(sPair){
+// 		var pair;
+// 		pair = sPair.split("=");
+// 		//target = document.getElementById(pair[0]);
+// 		return {sTarget:pair[0], url:pair[1]};
+// 	},
 	onClick: function(event){
-		var at = HUX.Compat.getEventTarget(event).href.replace(/.*@!?/g, "");
-		var sPairs = at.split(",");
-		var newHUXStates = [], self = this;
-		HUX.Compat.forEach(sPairs, function(sPair){
-			var pair, sTarget, target, url;
-			pair = sPair.split("=");
-			sTarget = pair[0];
-			target = document.getElementById(sTarget);
-			url = pair[1];
-			//this.addObjectToState({target:target.id, content:target.innerHTML, url:"", type:this.OLD_CONTENT});
-			this.pairs.addPair(sTarget, url, {
-				onAdd: this.getProxyOnClickCallback(this.pairsCallbacks.onAdd, newHUXStates),
-				onDelete: this.getProxyOnClickCallback(this.pairsCallbacks.onDelete, newHUXStates),
-				onReplace: this.getProxyOnClickCallback(this.pairsCallbacks.onReplace, newHUXStates)
-			});
-			//newHUXStates.push(  {target: sTarget, content:target.innerHTML ,url:url, type:this.NEW_CONTENT}  );
-		}, this);
-		this.pushState(newHUXStates, "", this.pairs.toString());
 		HUX.Compat.preventDefault(event);
+		var at = HUX.Compat.getEventTarget(event).href;
+		this.changeAt(at);
+	},
+	changeAt: function(at, addNewState){
+		at = at.replace(/.*@!?/g, "");
+		var sPairs = at.split(/,!?/), 
+		    newHUXStates = []; // empty for now ...
+		this.pairs.change(sPairs);
+		if(addNewState !== false) // default is true
+			this.pushState(newHUXStates, "", this.pairs.toString());
 	},
 	pushState: function(obj, title, newState){
 		var state = {HUXStates: obj};
@@ -170,7 +181,6 @@ HUX.UrlMgr = {
 		history.replaceState(state, title, "");
 	},
 	onPopState: function(event){
-	//	console.log(arguments);
 		try{
 			var state = event.state, self = HUX.UrlMgr;
 			if(!state || state.level === undefined || !self.enabled)
@@ -178,18 +188,7 @@ HUX.UrlMgr = {
 			self.updateState( state );
 			var old_level = self.level;
 			self.level = state.level;
-			var type2load = old_level > self.level ? self.OLD_CONTENT : self.NEW_CONTENT;
-			HUX.Compat.forEach(state.HUXStates, function (info){
-				if(info.type === type2load){
-					var target = document.getElementById(info.target);
-					if(target === null){
-						HUX.logError("target #"+info.target+" not found");
-						return;
-					}
-					HUX.HUXEvents.trigger("loading", {target:  target});
-					HUX.inject(target, "replace", info.content);
-				}
-			}, this);
+			self.changeAt(location.pathname, false);
 		}
 		catch(ex){
 			HUX.logError(ex);
@@ -202,10 +201,10 @@ HUX.addModule( HUX.UrlMgr );
 (function(){
 	var proxy;
 	// we update HUx.UrlMgr.state each time pushState or replaceState is called
+	// for browsers which do not have history.state
 	if(history.pushState && history.state === undefined){
 		proxy = function(origFn, state){
-			var args = Array.prototype.slice.call(arguments, 1);
-			origFn.apply(this, args);
+			origFn.execute(history);
 			HUX.UrlMgr.updateState( state );
 		};
 		history.pushState = HUX.wrapFn(history.pushState, proxy );

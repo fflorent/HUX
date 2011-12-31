@@ -289,13 +289,13 @@ var HUX = {
 	 * see also http://www.prototypejs.org/api/function/wrap
 	 **/
 	 // inspired from Prototype Wrap Method : https://github.com/sstephenson/prototype/blob/master/src/prototype/lang/function.js
-	wrapFn: function(orig, fn){
+	wrapFn: function(orig, wrapper, _this){
 		return function(){
 			var a = [ orig ];
 			orig.args = arguments; // the original arguments are set as fnOrig.args
-			orig.execute = function(){ orig.apply(this, orig.args); }; // method to execute the proxied function
-			Array.prototype.push.apply(a, arguments);
-			return fn.apply(this, a);
+			orig.execute = function(_this){ orig.apply(_this, orig.args); }; // method to execute the proxied function
+			Array.prototype.push.apply(a, arguments); // <=> a.push(arguments);
+			return wrapper.apply(_this, a);
 		};
 	},
 	/**
@@ -535,12 +535,11 @@ var HUX = {
 		 * 	- {DocumentFragment} the DocumentFragment with the cloned nodes
 		 */
 		pub.injectIntoDocFrag = function(nodes){
-			var frag = document.createDocumentFragment();
-			var i = 0;
-			for(var i = 0;  i < nodes.length; i++){
-				
-				frag.appendChild( nodes[i]);
-				pub.pauseMedias(nodes[i])
+			var frag = document.createDocumentFragment()
+			while(nodes.length > 0){
+				var node = nodes[0];
+				frag.appendChild( node);
+				pub.pauseMedias( node )
 				
 			}
 			delete nodes;
@@ -741,6 +740,9 @@ var HUX = {
 			var aInserted = [];
 			try{
 				aInserted = HUX.Inject.proceed(target, method, DOMContent); 
+			}
+			catch(ex){
+				HUX.logError(ex);
 			}
 			finally{
 				HUX.HUXEvents.trigger("afterInject", {target: target || document.body, children: aInserted});
@@ -969,10 +971,10 @@ var HUX = {
 		var pub = {};
 		// see HUX.xhr(opt)
 		pub.proceed = function(opt){
-			if(! opt.url.length === 0)
+			if(opt.url.length === 0)
 				throw new TypeError("invalid arguments");
 			if(typeof opt.target === "string") // if opt.target is an id string, get the matching element 
-				opt.target = document.getElementById(opt.target);
+				opt.target = document.getElementById( opt.target );
 			try{
 				var data = null, xhr;
 				// mainly for stageclassmgr
@@ -997,7 +999,7 @@ var HUX = {
 				setReadystatechange(xhr, opt.filling, opt.target, opt);
 				xhr.setRequestHeader("Content-Type", opt.contentType || "application/x-www-form-urlencoded");
 				// if the user set requestHeaders
-				if(opt.requestHeaders){
+				if(opt.requestHeaders ){
 					for(var hName in opt.requestHeaders)
 						xhr.setRequestHeader(hName, opt.requestHeaders[hName]);
 				}

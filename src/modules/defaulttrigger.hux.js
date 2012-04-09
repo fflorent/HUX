@@ -1,5 +1,5 @@
 /**
-    HTTP Using XML (HUX) : UrlManager
+    HTTP Using XML (HUX) : DefaultTrigger
     Copyright (C) 2011  Florent FAYOLLE
     
     Permission is hereby granted, free of charge, to any person obtaining a copy

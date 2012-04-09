@@ -1,5 +1,5 @@
 /**
-    HTTP Using XML (HUX) : UrlManager
+    HTTP Using XML (HUX) :At Manager
     Copyright (C) 2011  Florent FAYOLLE
     
     Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -19,186 +19,248 @@
     OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
     THE SOFTWARE.
 **/
-HUX.AtMgr = {
-	// history level
-	level:0,
-	// OLD_CONTENT corresponds to content that have been deleted. onPopState loads this type of content if the user goes back
-	OLD_CONTENT:1,
-	// NEW_CONTENT corresponds to content that have been added. onPopState loads this type of content if the user goes forward
-	NEW_CONTENT:2,
-	pairs: null,
-	enabled: !!history.pushState,
-	/**
-	 * Callbacks per action (add, delete or replace a pair in @...).
-	 */
-	pairsCallbacks: {
-		onAdd: function(added){
-			var sTarget = added.target, target = document.getElementById(sTarget), self = HUX.AtMgr;
-			if(target !== null){
-				self.__default_contents[sTarget] = target.innerHTML;
-				return self.load(target, added.url);
-			}
-			else{
-				return false;
-			}
-		},
-		onReplace: function(added){
-			var target = document.getElementById(added.target), self = HUX.AtMgr;
-			if(target !== null){
-				return self.load(target, added.url);
-			}
-			else{
-				return false;
-			}
-		},
-		onDelete: function(deleted){
-			var sTarget = deleted.target, replacement = HUX.AtMgr.__default_contents[sTarget];
-			if(replacement !== undefined){
-				var target = document.getElementById(sTarget);
+// atmgr.hux.js
+HUX.AtMgr = (function(){
+	/** =================== INNER FUNCTIONS ================== **/ 
+	var inner = {
+		enabled: !!history.pushState,
+		// history level
+		level:0,
+		pairs: null,
+		
+		/**
+		 * Callbacks per action (add, delete or replace a pair in @...).
+		 */
+		pairsCallbacks: {
+			onAdd: function(added){
+				var sTarget = added.target, target = document.getElementById(sTarget);
 				if(target !== null){
-					HUX.HUXEvents.trigger("loading", {target: target });
-					HUX.inject(target, "replace", replacement);
-					return true;
+					inner.default_contents[sTarget] = target.innerHTML;
+					return inner.load(target, added.url);
 				}
+				else{
+					return false;
+				}
+			},
+			onReplace: function(added){
+				var target = document.getElementById(added.target);
+				if(target !== null){
+					return inner.load(target, added.url);
+				}
+				else{
+					return false;
+				}
+			},
+			onDelete: function(deleted){
+				var sTarget = deleted.target, replacement = inner.default_contents[sTarget];
+				if(replacement !== undefined){
+					var target = document.getElementById(sTarget);
+					if(target !== null){
+						HUX.HUXEvents.trigger("loading", {target: target });
+						HUX.inject(target, "replace", replacement);
+						return true;
+					}
+				}
+				return false;
 			}
-			return false;
-		}
-	},
-	preventDefaultIfDisabled: false,
-	asyncReq: false,
-	state:  null,
-	__default_contents : {},
-	init: function(){
-		this.pairs = this.createPairMgr(this.pairsCallbacks);
-		if(! this.enabled )
-			return;
-		if(!this.getState() || ! ( (this.getState().HUXStates || null) instanceof Array) ){
-			this.initHUXState();
-		}
-		this.addObjectToState({});
-		HUX.addLiveListener( this );
+		},
+		asyncReq: false,
+		state:  null,
+		default_contents : {},
 		
-		this.pairs.toString = function(){
-			return "@"+this.map(function(a){ return a.target+"="+a.url; }).join();
-		};
-		if( this.pairs.toString() !== ( location.pathname.match(/@.*/)||["@"] )[0] ){
-			this.pushState([], "", location.pathname.replace(/@.*/g, "") + this.pairs.toString());
-		}
-	},
-	setEnabled: function(value){
-		this.enabled = value;
-	},
-	createPairMgr: function(callbacks){
-		return HUX.PairManager.split((location.pathname.match(/[^@]@(.*)/) || ["",""])[1], /([^=,]+)=([^=,]+)/g, callbacks);
-	},
-	listen: function(context){
-		var self = HUX.AtMgr;
-		// this module works only with modern browsers which implements history.pushState
-		// so we suppose that they implement evaluate as well...
-		HUX.Selector.evaluate( "./descendant-or-self::a[starts-with(@href, '@')]", context, function(el){ 
-			HUX.Compat.addEventListener(el, "click", function(){self.onClick.apply(self,arguments)}); 
-		});
-	},
-	getState: function(){
-		return history.state !== undefined ? history.state : HUX.AtMgr.state;
-	},
-	updateState: function(state){
-		if(!history.state)
-			HUX.AtMgr.state = state;
-	},
-	load: function(target, url){
-		var opt = {
-                        data:null,
-                        url:url,
-                        method:'get',
-                        async:this.asyncReq,
-                        filling:"replace", 
-                        target:target
-                };
+		/**
+		 * Function; createPairMgr
+		 * creates an instance of HUX.PairManager for AtMgr
+		 * 
+		 * Parameters:
+		 * 	- *callbacks*: {Object} the callback object
+		 * 
+		 * Returns:
+		 * 	- {HUX.PairManager} the instance
+		 */
+		createPairMgr: function(callbacks){
+			return HUX.PairManager.split((location.toString().match(/[^@]@(.*)/) || ["",""])[1], /([^=,]+)=([^=,]+)/g, callbacks);
+		},
 		
-                var xhr = HUX.xhr(opt);
-		return xhr.status === 200;
-	},
-	getNewState: function(target, url){
-		var reExtract = new RegExp(location.pathname+".*");
-		var curState = location.href.match(reExtract)[0];
-		var newState = curState.replace( /(@.*|$)/, this.pairs.toString());
-		return newState;
-	},
-	initHUXState: function(){
-		var state = this.getState() || {};
-		state.HUXStates = [];
-		state.level = this.level;
-		history.replaceState(state, "", "");
-	},
-	getProxyOnClickCallback: function(fnOrig, newHUXStates){
-		var self = this;
-		return function(oTarget){
-			var obj, target, ret, sTarget = oTarget.target;
-			target = document.getElementById( sTarget );
-			if(target !== null)
-				obj = {target: sTarget, content:target.innerHTML, type:self.OLD_CONTENT};
-			ret = fnOrig.apply(this, arguments);
-			if(ret && target !== null){
-				self.addObjectToState(  obj  );
-				newHUXStates.push( {target: sTarget, content:target.innerHTML, type:self.NEW_CONTENT} );
+		findAnchors: function(context, fnEach){
+			var msieVers = HUX.Browser.getMSIEVersion();
+			if(msieVers && msieVers <= 7){
+				var fnFilter = function(el){  
+					// NOTE : el.getAttribute("href", 2) does not always work with IE 7, so we use this workaround to 
+					// test if the href attribute begins with "#!"
+					return el.href.indexOf( location.href.replace(/@.*|#.*/g, "")+"@" ) === 0;  
+				};
+				HUX.Selector.filterIE("a", fnFilter, context, fnEach);
 			}
-			return ret;
-		};
-	},
-	onClick: function(event){
-		HUX.Compat.preventDefault(event);
-		var at = HUX.Compat.getEventTarget(event).href;
-		this.changeAt(at);
-	},
-	changeAt: function(at, addNewState){
-		at = at.replace(/.*@!?/g, "");
-		var sPairs = at.split(/,!?/), 
-		    newHUXStates = []; // empty for now ...
-		this.pairs.change(sPairs);
-		if(addNewState !== false){ // default is true
-			var filename = (location.pathname.match(/.*\/([^@]*)/) || [null,""])[1];
-			this.pushState(newHUXStates, "", filename +  this.pairs.toString());
+			else{
+				HUX.Selector.byAttribute( "a", "href^='@'", context, fnEach);
+			}
+		},
+		
+		/**
+		 * Function: updateState
+		 * sets the history state if history.state does not exist
+		 */
+		updateState: function(state){
+			if(!history.state)
+				inner.state = state;
+		},
+		/**
+		 * Function: load
+		 * does an xhr request and inject the content in the target element
+		 * 
+		 * Parameters:
+		 * 	- *target*: {Element} the target element
+		 * 	- *url*: {String} the location of the content
+		 * 
+		 * Returns:
+		 * 	- {Boolean} true if the xhr request succeeded (xhr.status==200)
+		 */
+		load: function(target, url){
+			var opt = {
+				data:null,
+				url:url,
+				method:'get',
+				async:inner.asyncReq,
+				filling:"replace", 
+				target:target
+			};
+			
+			var xhr = HUX.xhr(opt);
+			return xhr.status === 200;
+		},
+		/**
+		 * Function: initHUXState
+		 * initializes the history state
+		 */
+		initHUXState: function(){
+			var state = pub.getState() || {};
+			state.HUX_AT = {
+				info: [],
+				level: inner.level
+			};
+			history.replaceState(state, "", "");
+		},
+		/**
+		 * Function: onClick
+		 * click event handler for links with atinclusions
+		 */
+		onClick: function(event){
+			HUX.Compat.preventDefault(event);
+			var at = HUX.Compat.getEventTarget(event).href;
+			pub.changeAt(at);
+		},
+		
+		/**
+		 * Function: pushState
+		 * adds a new history state
+		 * 
+		 * 
+		 */
+		pushState: function(obj, title, newState){
+			var state = {
+				HUX_AT:{
+					info: obj,
+					level: ++inner.level
+				}
+			};
+			history.pushState(state, title, newState);
+		},
+		/**
+		 * Function: onPopState
+		 * popstate event handler
+		 */
+		onPopState: function(event){
+			try{
+				var state = event.state;
+				if(!state || state.HUX_AT === undefined || !inner.enabled)
+					return;
+				inner.updateState( state );
+				/*var old_level = inner.level;
+				inner.level = inner.level;*/
+				pub.changeAt(location.toString(), false);
+			}
+			catch(ex){
+				HUX.logError(ex);
+			}
 		}
-	},
-	pushState: function(obj, title, newState){
-		var state = {HUXStates: obj};
-		state.level = ++this.level;
-		history.pushState(state, title, newState);
-	},
-	addObjectToState: function(obj, title){
-		var state = this.getState();
-		if(!state)
-			throw new Error("state is null");
-		state.HUXStates = (state.HUXStates || []).filter(function(el){return el.target !== obj.target || el.type !== obj.type;}).concat([obj]);
-		history.replaceState(state, title, "");
-	},
-	onPopState: function(event){
-		try{
-			var state = event.state, self = HUX.AtMgr;
-			if(!state || state.level === undefined || !self.enabled)
+	};
+	
+	
+	/** =================== PUBLIC ================== **/ 
+	var pub = {
+		inner: inner,
+		
+		/**
+		 * Function: changeAt
+		 * adds or replaces atinclusions in the URL
+		 * 
+		 * Parameters:
+		 * 	- *at*: {String} the atinclusion string
+		 * 	- *addNewState*: {Boolean} indicates if a new state is added (optional; default=true)
+		 */
+		changeAt: function(at, addNewState){
+			at = at.replace(/.*@!?/g, "");
+			var sPairs = at.split(/,!?/), 
+			    newInfo = []; // empty for now ...
+			inner.pairs.change(sPairs);
+			if(addNewState !== false){ // default is true
+				var filename = (location.toString().match(/.*\/([^@]*)/) || [null,""])[1];
+				inner.pushState(newInfo, "", filename +  inner.pairs.toString());
+			}
+		},
+		init: function(){
+			if(! inner.enabled )
 				return;
-			self.updateState( state );
-			var old_level = self.level;
-			self.level = state.level;
-			self.changeAt(location.pathname, false);
+			inner.pairs = inner.createPairMgr(inner.pairsCallbacks);
+			if(!pub.getState() || ! ( (pub.getState().HUX_AT || null) instanceof Object) ){
+				inner.initHUXState();
+			}
+			//this.addObjectToState({});
+			HUX.addLiveListener( this );
+			
+			inner.pairs.toString = function(){
+				return "@"+this.map(function(a){ return a.target+"="+a.url; }).join();
+			};
+			if( inner.pairs.toString() !== ( location.toString().match(/@.*/)||["@"] )[0] ){
+				inner.pushState([], "", location.toString().replace(/@.*/g, "") + inner.pairs.toString());
+			}
+		},
+		listen: function(context){
+			// this module works only with modern browsers which implements history.pushState
+			// so we suppose that they implement evaluate as well...
+			inner.findAnchors(context, function(el){ 
+				HUX.Compat.addEventListener(el, "click", inner.onClick); 
+			});
+		},
+		/**
+		 * Function; getState
+		 * gets the history state
+		 */
+		getState: function(){
+			return history.state !== undefined ? history.state : inner.state;
+		},
+		setEnabled: function(val){
+			inner.enabled = val;
 		}
-		catch(ex){
-			HUX.logError(ex);
-		}
-	}
-};
-HUX.Compat.addEventListener( window, "popstate", HUX.AtMgr.onPopState );
+	};
+	
+	
+	return pub;
+})();
+
+HUX.Compat.addEventListener( window, "popstate", HUX.AtMgr.inner.onPopState );
 HUX.addModule( HUX.AtMgr );
+
 
 (function(){
 	var proxy;
-	// we update HUx.AtMgr.state each time pushState or replaceState is called
-	// for browsers which do not have history.state
+	// we update HUX.AtMgr.state each time pushState or replaceState are called
+	// for browsers which do not have history.state (currently Chrome and Safary)
 	if(history.pushState && history.state === undefined){
 		proxy = function(origFn, state){
 			origFn.execute(history);
-			HUX.AtMgr.updateState( state );
+			HUX.AtMgr.inner.updateState( state );
 		};
 		history.pushState = HUX.wrapFn(history.pushState, proxy );
 		history.replaceState = HUX.wrapFn(history.replaceState,  proxy );

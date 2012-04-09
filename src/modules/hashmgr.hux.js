@@ -175,12 +175,24 @@ HUX.HashMgr = {
 		fnEach = function(el){
 			HUX.Compat.addEventListenerOnce(el, "click", HUX.HashMgr.onClick);
 		};
-		// we look for anchors whose href beginns with "#!" 
-		if(document.evaluate !== undefined){
-			prefixedTN = HUX.Selector.prefixTagName("a");
-			HUX.Selector.evaluate("./descendant-or-self::"+prefixedTN+"[starts-with(@href, '#!')]", context, fnEach);
-		}
-		else{
+		// we look for anchors whose href begins with "#!" 
+		// so anchors with hash operations ("#!+", "#!-") can be treated before location.hash is changed
+		HUX.HashMgr.findAnchors(context, fnEach);
+	},
+	/**
+	 * Function: findAnchors
+	 * gets the anchors with hashbangs within a context node
+	 * 
+	 * Parameters:
+	 * 	- *context*: {Element} the context node
+	 * 	- *fnEach*: {Function} the function to execute for each found element
+	 * 
+	 * Returns:
+	 * 	- {Array of Elements} the found elements
+	 */
+	findAnchors: function(context, fnEach){
+		var msieVers = HUX.Browser.getMSIEVersion();
+		if(msieVers && msieVers <= 7){
 			fnFilter = function(el){  
 				// NOTE : el.getAttribute("href", 2) does not always work with IE 7, so we use this workaround to 
 				// test if the href attribute begins with "#!"
@@ -188,8 +200,10 @@ HUX.HashMgr = {
 			};
 			HUX.Selector.filterIE("a", fnFilter, context, fnEach);
 		}
+		else{
+			HUX.Selector.byAttribute("a", "href^='!#'", context, fnEach);
+		}
 	},
-	
 	/*
 	 * Function: handleIfChangement
 	 * handles the hash changement
@@ -259,7 +273,7 @@ HUX.HashMgr = {
 	 * 
 	 * Parameters:
 	 * 	- *hash*: {String} the new hash to set 
-	 * 	- *keepPrevHash*: {Boolean} true if we do not change the current hash (default: false)
+	 * 	- *keepPrevHash*: {Boolean} true if we do not change the current hash (optional; default: false)
 	 */
 	updateHash: function(hash, keepPrevHash){
 		if( hash.replace(/^#/, "") !== location.hash.replace(/^#/, "") ){

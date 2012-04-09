@@ -1,7 +1,7 @@
 // fastly implemented module for HUX (not official)
 // save the currentTime of an audio in the URL
 HUX.AudioTime = {
-	enabled:window.Audio !== undefined,
+	enabled:window.Audio !== undefined && history.pushState !== undefined,
 	init: function(){
 		if(this.enabled === false)
 			return;
@@ -38,15 +38,15 @@ HUX.AudioTime = {
 	},
 	updateState: function(id, currTime){
 		var ext = (id && document.getElementById(id)) ?  ",~"+id+"="+currTime   : "";
-		var stateUpdater, newState = (location.pathname + location.hash).replace(/,?~([^,#]*)/g, "") + ext;
+		var stateUpdater, newState = (location.toString()).replace(/,?~([^,#]*)/g, "") + ext;
 		// we keep the same state
-		history.replaceState(HUX.UrlMgr.getState(), "", newState);
+		history.replaceState(HUX.AtMgr.getState(), "", newState);
 	},
 	adjustTime: function(context){
 		context = context || document;
 		// if the new URL ends with a tilde 
 		// if a currentTime is set in the URL :
-		var match = (location.pathname + location.hash).match( /~([^=]*)=([0-9\.]*)/ ), audio, currTime;
+		var match = location.toString().match( /~([^=]*)=([0-9\.]*)/ ), audio, currTime;
 		if(match !== null){
 			// we set the currentTime 
 			// NOTE : context.getElementById is undefined, we use querySelector instead ...
@@ -68,17 +68,17 @@ HUX.AudioTime = {
 	}
 };
 
-// we say to UrlMgr that a key beginning with a ~ is not a target, and ask not to remove it
-(function (umpc, hmpc){
+// we say to AtMgr that a key beginning with a ~ is not a target, and ask not to remove it
+(function (ampc, hmpc){
 	var proxy = function(fnOrig, pair){
 		if(pair.target.indexOf("~") === 0)
 			return !! document.querySelector("#demo #"+pair.target.substring(1));
 		else
 			return fnOrig.apply(this,fnOrig.args);
 	};
-	umpc.onAdd = HUX.wrapFn(umpc.onAdd,  proxy );
-	umpc.onReplace = HUX.wrapFn(umpc.onReplace,  proxy );
+	ampc.onAdd = HUX.wrapFn(ampc.onAdd,  proxy );
+	ampc.onReplace = HUX.wrapFn(ampc.onReplace,  proxy );
 	hmpc.onAdd = HUX.wrapFn(hmpc.onAdd,  proxy );
-})( HUX.UrlMgr.pairsCallbacks, HUX.HashMgr.pairsCallbacks ); 
+})( HUX.AtMgr.inner.pairsCallbacks, HUX.HashMgr.pairsCallbacks ); 
 
 HUX.addModule(HUX.AudioTime);

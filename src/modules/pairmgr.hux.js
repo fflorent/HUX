@@ -92,7 +92,7 @@ HUX.PairManager = function(callbacks){
 		var ret = [],
 		    eTarget = document.getElementById(target);
 		HUX.Compat.forEach(candidates, function(candidate){
-			var cur = document.getElementById(candidate.target), 
+			var cur = document.getElementById(candidate.target) || {parentNode:null}, 
 			    isDesc = false; // is the candidate descendant of target ?
 			while( (cur = cur.parentNode)  && !isDesc) // we go through the ancestors of candidate
 				isDesc = cur === eTarget; 
@@ -111,29 +111,30 @@ HUX.PairManager = function(callbacks){
 	 */
 	var splitPair = function(sPair){
 		var pair;
-		pair = sPair.replace(/^!/, "").split("=");
+		pair = sPair.replace(/^!/, "").split(/=/);
 		return {target:pair[0], url:pair[1]};
 	};
-	
 	this.change = function(sPairs){
 		var reModif = /^!?[+-]/, isModif = reModif.test( sPairs[0] ); // isModif === true if the first character of the first pair equals to '+' or '-'
 		
 		if(isModif) {
-			HUX.Compat.forEach(sPairs, function(sPair){
+			for(var i = 0; i < sPairs.length; i++){
 				
-				var bangOffset = (sPair.charAt(0)==='!'?1:0), op = sPair.charAt(bangOffset), pair, sTarget;
+				var sPair = sPairs[i], bangOffset = (sPair.charAt(0)==='!'?1:0), op = sPair.charAt(bangOffset), pair, sTarget;
 				sPair = sPair.slice(bangOffset+ 1); // we remove '+' or '-' from sPair
 				if(op === '-'){
 					this.removePair(sPair);
 				}
 				else if(op === '+'){
 					pair = splitPair(sPair);
-					this.setPair(pair.target, pair.url);
+					var res = this.setPair(pair.target, pair.url);
+					if(res.ok === false)
+						break;
 				}
 				else{
 					throw "wrong operator for pair modification";
 				}
-			}, this);
+			}
 		}
 		else{
 			// in order to optimize, we look for the first index where there is differences,
@@ -144,12 +145,16 @@ HUX.PairManager = function(callbacks){
 			
 			sPairs = sPairs.slice(i); // we only keep sPairs elements whose index are greater or equal to i
 			this.removeAt(i, "all"); 
-			HUX.Compat.forEach(sPairs, function(sPair, i){
+			
+			for(var i = 0; i < sPairs.length; i++){
+				var sPair = sPairs[i], pair, res;
 				if(sPair.length > 0){
-					var pair = splitPair(sPair);
-					this.setPair(pair.target, pair.url);
+					pair = splitPair(sPair),
+					res = this.setPair(pair.target, pair.url);
+					if(res.ok === false)
+						break;
 				}
-			}, this);
+			}
 		}
 	};
 	/**
@@ -159,6 +164,8 @@ HUX.PairManager = function(callbacks){
 	 * Parameters: 
 	 *  - target : {String} the target ID of the pair
 	 *  - url : {String} the URL of the pair
+	 * 
+	 * Returns: {index:index, ok:ok} where index is the index of the new pair and ok is the result of the callback
 	 */
 	this.setPair = function(target, url){
 		var index = this.indexOf(target), ok = true;
@@ -181,7 +188,7 @@ HUX.PairManager = function(callbacks){
 			if(ok !== false)
 				this.push( added );
 		}
-		return index;
+		return {index: index, ok: ok};
 	};
 	/**
 	 * Function: removePair

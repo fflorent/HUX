@@ -1,13 +1,14 @@
 
  #RewriteRules
  RewriteEngine on
- RewriteRule ([^@]*)@.*	 $1 
- RewriteRule ^f_(.*)	contents/features/$1.html
- RewriteRule ^d_(.*)	contents/demos/$1.html
- RewriteRule ^di_(.*)	contents/demos/images/$1.html
- RewriteRule ^dij_(.*)	contents/demos/images/$1.jpg
- RewriteRule ^dm_(.*)	contents/demos/musics/$1.html
- RewriteRule ^s_(.*)	contents/demos/slides/$1.html
- RewriteRule ^res_(.*)	resources/$1.html
- RewriteCond %{REQUEST_FILENAME} !-f
- RewriteRule ([^.]+)	contents/$1.html
+ RewriteRule ([^@]*)@(.*)	 $1 
+ RewriteRule f_([^/]*)$	/tmp/HUX/doc/contents/features/$1.html
+ RewriteRule d_([^/]*)$	/tmp/HUX/doc/contents/demos/$1.html
+ RewriteRule di_([^/]*)$	/tmp/HUX/doc/contents/demos/images/$1.html
+ RewriteRule dij_([^/]*)$	/tmp/HUX/doc/contents/demos/images/$1.jpg
+ RewriteRule dm_([^/]*)$	/tmp/HUX/doc/contents/demos/musics/$1.html
+ RewriteRule s_([^/]*)$	/tmp/HUX/doc/contents/demos/slides/$1.html
+ RewriteRule res_([^/]*)$	/tmp/HUX/doc/contents/resources/$1.html
+ RewriteRule c_([^/]*)$	/tmp/HUX/doc/contents/$1.html
+# RewriteCond %{REQUEST_FILENAME} !-f
+# RewriteRule ([^/]*)	/tmp/HUX/doc/contents/$1.html

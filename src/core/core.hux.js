@@ -53,14 +53,9 @@ var HUX = {
 	 * inits the core
 	 */
 	init: function(){
-		this.Selector.init();
+		// does nothing now ....
 	},
 	
-	/**
-	 * variable: namespace
-	 * {String} the namespace of HUX for XHTML 
-	 */
-	namespace: "urn:hux:1.0",
 	
 		
 	/**
@@ -282,7 +277,8 @@ var HUX = {
 	 * 
 	 * Parameters: 
 	 * - *orig* : {Function} the original function
-	 * - *wrapper* : {Function} The function to use as a wrapper.
+	 * - *wrapper* : {Function} The function to use as a wrapper
+	 * - *_this* : {Object} the value of this to call the wrapper
 	 *
 	 * Returns a function "wrapped" around the original function.
 	 *
@@ -293,7 +289,7 @@ var HUX = {
 		return function(){
 			var a = [ orig ];
 			orig.args = arguments; // the original arguments are set as fnOrig.args
-			orig.execute = function(_this){ orig.apply(_this, orig.args); }; // method to execute the proxied function
+			orig.execute = function(_this){ return orig.apply(_this, orig.args); }; // method to execute the proxied function with the arguments
 			Array.prototype.push.apply(a, arguments); // <=> a.push(arguments);
 			return wrapper.apply(_this, a);
 		};
@@ -708,7 +704,7 @@ var HUX = {
 	 * Parameters:
 	 *	- *target* : {Element} the element which will receive @DOMContent
 	 * 	- *method* : {String} the string tallying to hux:filling (default : "replace")
-	 * 	- *content* : {String or Array of Element} HTML String or Array of elements to be added to @target
+	 * 	- *content* : {String or Array of Elements} HTML String or Array of elements to be added to @target
 	 */
 	inject:function(target, method, content){
 		var DOMContent = content;
@@ -754,67 +750,72 @@ var HUX = {
 	 * DOM Selector Tool
 	 */
 	Selector: (function(){
-		var prefixTN = "";
-		
-		/**
-		 * IE does not implement document.evaluate
-		 * This function is a fallback for Selector.byAttribute
-		 */
-		var byAttributeIE = function(tagName, attr, context, fnEach){
-			var fnFilter = function(el){  return el.getAttribute(attr);  }; // NOTE : IE7 returns "" if the attribute does not exist
-			return pub.filterIE(tagName, fnFilter, context, fnEach);
+
+		// for browsers which do not implement querySelector (mainly IE7-)
+		// see its use in pub.byAttribute
+		var oFnMatchAttrValIE = {
+			"=": function(found, expected){
+				return found === expected;
+			},
+			"*=": function(found, expected){
+				return found.indexOf(expected) >= 0; 
+			},
+			"^=": function(found, expected){
+				return found.indexOf(expected) === 0;
+			},
+			"$=": function(found, expected){
+				return found.lastIndexOf(expected) === found.length - expected.length;
+			},
+			undefined: function() { return true;} // if no value expected, return true in all case
 		};
+		
 		/**
 		 * Function: init
 		 * inits the module
 		 */
 		var pub = {};
-		pub.init = function(){
-			// check whether we are using html or xhtml ...
-			if(document.evaluate !== undefined){
-				if( this.evaluate("/html").length > 0 )
-					prefixTN = "";
-				else if(this.evaluate("/xhtml:html").length > 0)
-					prefixTN = "xhtml:";
-				else
-					throw new Error("Document non supported by HUX");
-			}
-		};
-		/**
-		 * Function: prefixTagName
-		 * adds the prefix for the element depending on the document type (html or xhtml)
-		 * to be used to write an XPath Expression
-		 * 
-		 * Parameters:
-		 * 	- *tagName*: {String} the tagName
-		 * 
-		 * Returns:
-		 * 	- {String} the prefixed tagName
-		 */
-		pub.prefixTagName= function(tagName){
-			return prefixTN+tagName;
+		
+		pub.splitAttrSel = function(attrSel){
+			var resMatch = attrSel.match(/([^\^$*=]+)(=|\$=|\^=|\*=)?['"]?([^'"]*)['"]?/);
+			return {
+				attrName: resMatch[1],
+				op: resMatch[2],
+				attrVal: resMatch[3]
+			};
 		};
 		/**
 		 * Function: byAttribute
 		 * Selects elements by their attributes
 		 * 
 		 * Parameters:
-		 * 	- *tagName* : {String} the tagName of the element you look for
-		 * 	- *attr* : {String} the attribute to look for
-		 * 	- *context* : {Element} the element in which one will search (optional)
-		 * 	- *fnEach* : {Function} thefunction executed for each result (optional)
+		 * 	- *tagName*: {String} the tagName of the element you look for
+		 * 	- *attrSel*: {String} the attribute selector (supported : "att", "att='val'", "att^='val', "att*='val'", "att$='val'"). See CSS3 attribute selectors
+		 * 	- *context*: {Element} the element in which one will search (optional)
+		 * 	- *fnEach*: {Function} thefunction executed for each result (optional)
 		 * 
 		 * Returns:
-		 * 	- {Array of Element} the elements found
+		 * 	- {Array of Elements} the elements found
 		 */
-		pub.byAttribute = function(tagName, attr, context, fnEach){
-			var xpath, prefixedTN = pub.prefixTagName(tagName);
-			if(typeof document.evaluate !== "undefined"){
-				xpath = "//"+prefixedTN+"[@"+attr+"]";
-				return pub.evaluate(xpath, context, fnEach);
+		pub.byAttribute = function(tagName, attrSel, context, fnEach){
+			context = context || document;
+			if(context.querySelector !== undefined)
+			{
+				var result = context.querySelectorAll(tagName+"["+attrSel+"]");
+				if(fnEach !== undefined)
+					HUX.Compat.forEach(result, fnEach);
+				return HUX.toArray(result);
 			}
-			else
-				return byAttributeIE(tagName, attr, context, fnEach);
+			else{ // fallback (mostly for IE 7-)
+				var resSplitAttrSel = pub.splitAttrSel(attrSel);
+				    fnMatch = oFnMatchAttrValIE[ resSplitAttrSel.op ],
+				    attrName = resSplitAttrSel.attrName, 
+				    expectedVal = resSplitAttrSel.attrVal;
+				    fnFilter = function(el){ 
+					var foundVal = el.getAttribute(attrName);
+					return (!!foundVal) && fnMatch(foundVal, expectedVal); // NOTE: IE7 returns "" if the attribute does not exist
+				    }; 
+				return pub.filterIE(tagName, fnFilter, context, fnEach);
+			}
 		};
 		
 		/**
@@ -822,79 +823,20 @@ var HUX = {
 		 * similar to <byAttribute>, but search for HUX attributes whatever the prefix is
 		 * 
 		 * Parameters:
-		 * 	- *tagName* : {String} the tagName of the element you look for
-		 * 	- *attr* : {String} the attribute to look for
-		 * 	- *context* : {Element} the element in which one will search (optional)
-		 * 	- *fnEach* : {Function} thefunction executed for each result (optional)
+		 * 	- *tagName*: {String} the tagName of the element you look for
+		 * 	- *attrSel*: {String} the attribute selector (supported : "att", "att=val", "att^=val, "att*=val", "att$=val"). See CSS3 attribute selectors
+		 * 	- *context*: {Element} the element in which one will search (optional)
+		 * 	- *fnEach*: {Function} thefunction executed for each result (optional)
 		 * 
 		 * Returns:
-		 * 	- {Array of Element} the elements found
+		 * 	- {Array of Elements} the elements found
 		 */
-		pub.byAttributeHUX = function(tagName, attr, context, fnEach){
-			var xpath, prefixedTN, attrs = HUX.HUXattr.getAttrAllPrefixes(attr), sAttrXP, ieRet = [];
-			prefixedTN = pub.prefixTagName(tagName);
-			if(typeof document.evaluate !== "undefined"){
-				sAttrXP = attrs.join(" or @"); // sAttrXP = "data-attr OR @data-hux-attr OR @hux:attr"
-				xpath = "./descendant-or-self::"+prefixedTN+"[@"+sAttrXP+"]";
-				return pub.evaluate(xpath, context, fnEach);
-			}
-			else{
-				HUX.Compat.forEach(attrs, function(attr){
-					ieRet = ieRet.concat( byAttributeIE(tagName, attr, context, fnEach) );
-				});
-				return ieRet;
-			}
+		pub.byAttributeHUX = function(tagName, attrSel, context, fnEach){
+			var prefixedAttrSel = HUX.HUXattr.getAttrPrefix(attrSel);
+			return pub.byAttribute(tagName, prefixedAttrSel, context, fnEach);
 		};
-		/**
-		 * Function:nsResolver
-		 * function used by document.evaluate in <evaluate> for namespaces
-		 * 
-		 * Parameters:
-		 * 	- *prefix*: {String} the prefix used in the XPath expression
-		 * 
-		 * Returns :
-		 * 	- {String} the namespace
-		 */
-		pub.nsResolver = function(prefix){
-			var ns = {
-				"hux":HUX.namespace,
-				"xhtml":"http://www.w3.org/1999/xhtml"
-			};
-			if(!prefix)
-				return ns.xhtml;
-			return ns[prefix];
-		};
-		/**
-		 * Function: evaluate
-		 * 
-		 * evaluates an XPath Expression
-		 * 
-		 * NOTES: 
-		 *  - use Selector.filterIE when you detect that IE is being used
-		 *  - we use document.evaluate instead of document.querySelectorAll because of the non-implementation of namespace gestion in CSS3 selectors 
-		 *  - if you use a context, your xpath expression may begin with a dot (example : "./descendant-or-self::p" for selecting all paragraphs in the context)
-		 *  - See Also prefixTagName for convenience with the tagName of the elements
-		 * 
-		 * Parameters:
-		 * 	- *sXpath* : {String} the xpath expression
-		 * 	- *context* : {Element or Document} the element where we will search for results (default : document)
-		 * 	- *fnEach* : {Function} the function executed for each results (default: empty function)
-		 * 
-		 * Returns: 
-		 * 	- {Array of Element} the elements found
-		 */
-		pub.evaluate = function(sXpath, context, fnEach){
-			context = context || document;
-			fnEach = fnEach || function(){};
-			var results = document.evaluate(sXpath, context, pub.nsResolver, XPathResult.ANY_TYPE, null); 
-			var thisResult;
-			var ret = [];
-			while ( (thisResult = results.iterateNext()) !== null) {
-				ret.push(thisResult);
-				fnEach(thisResult);
-			}
-			return ret;
-		};
+		
+		
 		/**
 		 * Function: filterIE
 		 * IE does not implement document.evaluate. So, this function is a generic fallback
@@ -947,8 +889,10 @@ var HUX = {
 						if(xhr.readyState  === 4){
 							if(xhr.status  === 200) 
 								onSuccess(xhr, filling, target);
-							else 
+							else {
+								HUX.HUXEvents.trigger("requestError", {xhr:xhr,filling:filling,target:target});
 								onError(xhr, filling, target);
+							}
 						}
 					}
 					catch(ex){
@@ -971,10 +915,18 @@ var HUX = {
 		var pub = {};
 		// see HUX.xhr(opt)
 		pub.proceed = function(opt){
-			if(opt.url.length === 0)
-				throw new TypeError("invalid arguments");
-			if(typeof opt.target === "string") // if opt.target is an id string, get the matching element 
-				opt.target = document.getElementById( opt.target );
+			if(! opt.url ) // opt.url === undefined || opt.url === null || opt.url === ""
+				throw new TypeError("invalid argument : opt.url");
+			if(! opt.target)
+				throw new TypeError("invalid argument : opt.target");
+			if(typeof opt.target === "string"){ // if opt.target is an id string, get the matching element 
+				var target = document.getElementById( opt.target );
+				if(! target) // === undefined or === null
+					throw "#"+opt.target+" not found";
+				else
+					opt.target = target;
+			}
+			
 			try{
 				var data = null, xhr;
 				// mainly for stageclassmgr
@@ -1018,7 +970,7 @@ var HUX = {
 			HUX.inject(target, filling, (xhr.responseXML && xhr.responseXML.documentElement)? xhr.responseXML : xhr.responseText);
 		};
 		pub.onError = function(xhr, filling, target){
-			HUX.HUXEvents.trigger("requestError", {xhr:xhr,filling:filling,target:target});
+			HUX.inject(target, null, "<h1>"+xhr.status+" : "+xhr.statusText+"</h1>");
 		};
 		return pub;
 	})(),
@@ -1051,10 +1003,7 @@ var HUX = {
 	 * Attribute Manager for HUX
 	 */
 	HUXattr: (function(){
-		/** =================== PRIVATE ================== **/ 
-		var getAttributeNS = function(srcElement, name){
-			return srcElement.getAttributeNS ? srcElement.getAttributeNS(HUX.namespace, name) : srcElement.getAttribute("hux:"+name);
-		};
+		
 	   
 		/** =================== PUBLIC ================== **/ 
 		var pub = {};
@@ -1070,15 +1019,7 @@ var HUX = {
 		 * 	- {String} the value of the attribute
 		 */
 		pub.getAttributeHUX = function(el, name){
-			var ret = null,  attrs = pub.getAttrAllPrefixes(name), i;
-			for(i = 0; i < attrs.length && ret === null; i++){
-				ret = el.getAttribute( attrs[i] );
-			}
-			if(ret === null) // this might be because of non-support of Opera for getAttribute("hux:...")
-				ret = getAttributeNS(el, name);
-			if(ret === "") // correct odd behaviour of getAttributeNS, which returns "" if the attribute was not found
-				ret = null;
-			return ret;
+			return el.getAttribute( pub.getAttrPrefix(name) );
 		};
 		/**
 		 * Function: getFillingMethod
@@ -1108,22 +1049,17 @@ var HUX = {
 			return document.getElementById(idTn);
 		};
 		/**
-		 * Function: getAttrAllPrefixes
-		 * returns all the possible prefixed name for an attribute
+		 * Function: getAttrPrefixes
+		 * returns the prefixed attribute name 
 		 * 
 		 * Parameters: 
 		 * 	- *attr*: {String} the unprefixed attribute name
 		 * 
 		 * Returns: 
-		 * 	- {Array} all the possible prefixed name
+		 * 	- {String} the prefixed attribute name
 		 */
-		pub.getAttrAllPrefixes = function(attr){
-			return [
-				"data-hux-"+attr,
-				"data-"+attr,
-				"hux:"+attr
-				// removed non-prefixed attribute because of conflicts with target
-			];
+		pub.getAttrPrefix = function(attr){
+			return "data-hux-"+attr;
 		};
 		return pub;
 		
@@ -1207,7 +1143,7 @@ var HUX = {
 		};
 		/**
 		 * Function: addEventListenerOnce
-		 * adds an event listener and ensure that teh listener will be called only once
+		 * adds an event listener and ensure that the listener will be called only once
 		 * 
 		 * 
 		 * Parameters: 
@@ -1303,27 +1239,35 @@ var HUX = {
 	 * Namespace: Browser
 	 * information about the used browser
 	 */
-	Browser: {
-		layout_engine: /(Gecko|AppleWebKit|Presto)\/|(MSIE) /.exec(navigator.userAgent)[0].replace(/(\/| )$/, "").replace("MSIE", "Trident"),
-		__prefixes: {"Gecko":"moz", "AppleWebKit":"webkit", "Presto":"o", "Trident":"ms"},
+	Browser: (function(){
+		/** =================== PRIVATE ================== **/ 
+		var __prefixes = {"Gecko":"moz", "AppleWebKit":"webkit", "Presto":"o", "Trident":"ms"}
+		
+		/** =================== PUBLIC ================== **/ 
+		var pub = {};
+		pub.layout_engine= /(Gecko|AppleWebKit|Presto)\/|(MSIE) /.exec(navigator.userAgent)[0].replace(/(\/| )$/, "").replace("MSIE", "Trident");
 		/**
-		 * Function: evtPrefix
-		 * returns the prefix for browser-specific events (like (webkit|o)transitionend for Webkit and Presto)
-		 */
-		evtPrefix: function(){
-			return this.__prefixes[this.layout_engine]; // example : moz
-		},
+		* Function: evtPrefix
+		* returns the prefix for browser-specific events (like (webkit|o)transitionend for Webkit and Presto)
+		*/
+		pub.evtPrefix= function(){
+			return __prefixes[pub.layout_engine]; // example : moz
+		};
 		/**
-		 * Function: cssPrefix
-		 * returns the prefix for browser-specific css properties (like (-webkit-|-o-|-moz-)transition)
-		 */
-		cssPrefix: function(){
-			return "-"+this.evtPrefix()+"-"; // example : -moz-
-		},
-		isOldMSIE: function(){
+		* Function: cssPrefix
+		* returns the prefix for browser-specific css properties (like (-webkit-|-o-|-moz-)transition)
+		*/
+		pub.cssPrefix = function(){
+			return "-"+pub.evtPrefix()+"-"; // example : -moz-
+		};
+		/*pub.isOldMSIE = function(){
 			return /MSIE [0-8]/.test(navigator.userAgent);
+		};*/
+		pub.getMSIEVersion = function(){
+			return (navigator.userAgent.match(/MSIE ([0-9]+)/) || [null, null])[1];
 		}
-	}
+		return pub;
+	})()
 };
 
 HUX.addModule( HUX );

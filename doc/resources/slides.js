@@ -35,7 +35,7 @@ HUX.Slide = {
 			}
 			
 			if(elDir !== undefined && elDir.style.display !== "none")
-				HUX.UrlMgr.changeAt(elDir.getAttribute("href"));
+				HUX.AtMgr.changeAt(elDir.getAttribute("href"));
 		}
 	},
 	updateDirectionLink: function(link, numSlide){

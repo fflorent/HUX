@@ -3,9 +3,9 @@ HUX_JS=$(ROOT)/hux.js
 SRC=$(ROOT)/src
 MODULES=$(SRC)/modules
 CORE=$(SRC)/core/core.hux.js
+CCAT_MOD= @@cat $(MODULES)/$(1).hux.js >> $(HUX_JS);
 
-
-all: core simpleloader hashmgr hashmgr4indexing form scriptinjecter stageclassmgr overlay urlmgr urlmgrfallback # transition 
+all: core simpleloader hashmgr hashmgr4indexing form scriptinjecter stageclassmgr overlay atmgr atmgrfallback formupdateurl xhtmlsupport# transition 
 	@@echo "generation done";
 all-dev: all checker
 
@@ -14,32 +14,36 @@ init:
 core: init
 	@@cat $(CORE) >> $(HUX_JS); 
 simpleloader: core
-	@@cat $(MODULES)/simpleloader.hux.js >> $(HUX_JS);
+	$(call CCAT_MOD,simpleloader)
 hashmgr: pairmgr core
-	@@cat $(MODULES)/hashmgr.hux.js >> $(HUX_JS);
+	$(call CCAT_MOD,hashmgr)
 hashmgr4indexing: hashmgr
-	@@cat $(MODULES)/hashmgr4indexing.hux.js >> $(HUX_JS);
+	$(call CCAT_MOD,hashmgr4indexing)
 form:	core
-	@@cat $(MODULES)/form.hux.js >> $(HUX_JS);
+	$(call CCAT_MOD,form)
+formupdateurl: form hashmgr atmgr
+	$(call CCAT_MOD,formupdateurl)
 scriptinjecter: core
-	@@cat $(MODULES)/scriptinjecter.hux.js >> $(HUX_JS);
+	$(call CCAT_MOD,scriptinjecter)
 stageclassmgr: core
-	@@cat $(MODULES)/stageclassmgr.hux.js >> $(HUX_JS);
+	$(call CCAT_MOD,stageclassmgr)
 overlay: core
-	@@cat $(MODULES)/overlay.hux.js >> $(HUX_JS);
-urlmgr:  pairmgr core
-	@@cat $(MODULES)/urlmgr.hux.js >> $(HUX_JS);
+	$(call CCAT_MOD,overlay)
+atmgr:  pairmgr core
+	$(call CCAT_MOD,atmgr)
 pairmgr: core
-	@@cat $(MODULES)/pairmgr.hux.js >> $(HUX_JS);
+	$(call CCAT_MOD,pairmgr)
 transition: stageclassmgr
-	@@cat $(MODULES)/transition.hux.js >> $(HUX_JS);
-urlmgrfallback: urlmgr hashmgr
-	@@cat $(MODULES)/urlmgrfallback.hux.js >> $(HUX_JS);
+	$(call CCAT_MOD,transition)
+atmgrfallback: atmgr hashmgr
+	$(call CCAT_MOD,atmgrfallback)
+xhtmlsupport: core
+	$(call CCAT_MOD,xhtmlsupport)
 # needs improvement
-#default: core
-#	@@cat $(MODULES)/default.hux.js >> $(HUX_JS);
-checker:   core
-	@@cat $(MODULES)/checker.hux.js >> $(HUX_JS);
+#defaulttrigger: core
+#	$(call CCAT_MOD,defaulttrigger) >> $(HUX_JS);
+#checker:   core
+#	@@cat $(MODULES)/checker.hux.js >> $(HUX_JS);
 clean:
 	@@ rm $(HUX_JS); echo "hux.js removed";
 

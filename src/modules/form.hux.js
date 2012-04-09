@@ -115,17 +115,18 @@ HUX.Form = {
 			var arrData = [], opt;
 			// we fill the option object
 			if(arg1.nodeType === 1 && arg1.tagName === "FORM"){
+				var form = arg1;
 				opt = {
 					data:null, // set below
-					url:arg1.action,
-					method:arg1.getAttribute("method"),
+					url:form.action,
+					method:form.getAttribute("method"),
 					async:HUX.Form.async,
-					filling:HUX.HUXattr.getFillingMethod(arg1) || HUX.Form.defaultFilling,
-					target:HUX.HUXattr.getTarget(arg1) || undefined/*, // 
+					filling:HUX.HUXattr.getFillingMethod(form) || HUX.Form.defaultFilling,
+					target:HUX.HUXattr.getTarget(form) || undefined/*, // 
 					srcElement:form // ????*/
 				};
 				// we fill arrData : 
-				HUX.Selector.byAttribute("*", "name", arg1, function(el){
+				HUX.Selector.byAttribute("*", "name", form, function(el){
 					HUX.Form.serialize(el, arrData);
 				});
 				
@@ -137,7 +138,7 @@ HUX.Form = {
 			
 			// we call the XHR method
 			HUX.xhr(opt);
-			
+			return opt;
 		}
 		catch(ex){
 			HUX.logError(ex);

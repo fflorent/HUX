@@ -54,14 +54,9 @@ var HUX = {
 	 * inits the core
 	 */
 	init: function(){
-		this.Selector.init();
+		// does nothing now ....
 	},
 	
-	/**
-	 * variable: namespace
-	 * {String} the namespace of HUX for XHTML 
-	 */
-	namespace: "urn:hux:1.0",
 	
 		
 	/**
@@ -283,7 +278,8 @@ var HUX = {
 	 * 
 	 * Parameters: 
 	 * - *orig* : {Function} the original function
-	 * - *wrapper* : {Function} The function to use as a wrapper.
+	 * - *wrapper* : {Function} The function to use as a wrapper
+	 * - *_this* : {Object} the value of this to call the wrapper
 	 *
 	 * Returns a function "wrapped" around the original function.
 	 *
@@ -294,7 +290,7 @@ var HUX = {
 		return function(){
 			var a = [ orig ];
 			orig.args = arguments; // the original arguments are set as fnOrig.args
-			orig.execute = function(_this){ orig.apply(_this, orig.args); }; // method to execute the proxied function
+			orig.execute = function(_this){ return orig.apply(_this, orig.args); }; // method to execute the proxied function with the arguments
 			Array.prototype.push.apply(a, arguments); // <=> a.push(arguments);
 			return wrapper.apply(_this, a);
 		};
@@ -709,7 +705,7 @@ var HUX = {
 	 * Parameters:
 	 *	- *target* : {Element} the element which will receive @DOMContent
 	 * 	- *method* : {String} the string tallying to hux:filling (default : "replace")
-	 * 	- *content* : {String or Array of Element} HTML String or Array of elements to be added to @target
+	 * 	- *content* : {String or Array of Elements} HTML String or Array of elements to be added to @target
 	 */
 	inject:function(target, method, content){
 		var DOMContent = content;
@@ -755,67 +751,72 @@ var HUX = {
 	 * DOM Selector Tool
 	 */
 	Selector: (function(){
-		var prefixTN = "";
-		
-		/**
-		 * IE does not implement document.evaluate
-		 * This function is a fallback for Selector.byAttribute
-		 */
-		var byAttributeIE = function(tagName, attr, context, fnEach){
-			var fnFilter = function(el){  return el.getAttribute(attr);  }; // NOTE : IE7 returns "" if the attribute does not exist
-			return pub.filterIE(tagName, fnFilter, context, fnEach);
+
+		// for browsers which do not implement querySelector (mainly IE7-)
+		// see its use in pub.byAttribute
+		var oFnMatchAttrValIE = {
+			"=": function(found, expected){
+				return found === expected;
+			},
+			"*=": function(found, expected){
+				return found.indexOf(expected) >= 0; 
+			},
+			"^=": function(found, expected){
+				return found.indexOf(expected) === 0;
+			},
+			"$=": function(found, expected){
+				return found.lastIndexOf(expected) === found.length - expected.length;
+			},
+			undefined: function() { return true;} // if no value expected, return true in all case
 		};
+		
 		/**
 		 * Function: init
 		 * inits the module
 		 */
 		var pub = {};
-		pub.init = function(){
-			// check whether we are using html or xhtml ...
-			if(document.evaluate !== undefined){
-				if( this.evaluate("/html").length > 0 )
-					prefixTN = "";
-				else if(this.evaluate("/xhtml:html").length > 0)
-					prefixTN = "xhtml:";
-				else
-					throw new Error("Document non supported by HUX");
-			}
-		};
-		/**
-		 * Function: prefixTagName
-		 * adds the prefix for the element depending on the document type (html or xhtml)
-		 * to be used to write an XPath Expression
-		 * 
-		 * Parameters:
-		 * 	- *tagName*: {String} the tagName
-		 * 
-		 * Returns:
-		 * 	- {String} the prefixed tagName
-		 */
-		pub.prefixTagName= function(tagName){
-			return prefixTN+tagName;
+		
+		pub.splitAttrSel = function(attrSel){
+			var resMatch = attrSel.match(/([^\^$*=]+)(=|\$=|\^=|\*=)?['"]?([^'"]*)['"]?/);
+			return {
+				attrName: resMatch[1],
+				op: resMatch[2],
+				attrVal: resMatch[3]
+			};
 		};
 		/**
 		 * Function: byAttribute
 		 * Selects elements by their attributes
 		 * 
 		 * Parameters:
-		 * 	- *tagName* : {String} the tagName of the element you look for
-		 * 	- *attr* : {String} the attribute to look for
-		 * 	- *context* : {Element} the element in which one will search (optional)
-		 * 	- *fnEach* : {Function} thefunction executed for each result (optional)
+		 * 	- *tagName*: {String} the tagName of the element you look for
+		 * 	- *attrSel*: {String} the attribute selector (supported : "att", "att='val'", "att^='val', "att*='val'", "att$='val'"). See CSS3 attribute selectors
+		 * 	- *context*: {Element} the element in which one will search (optional)
+		 * 	- *fnEach*: {Function} thefunction executed for each result (optional)
 		 * 
 		 * Returns:
-		 * 	- {Array of Element} the elements found
+		 * 	- {Array of Elements} the elements found
 		 */
-		pub.byAttribute = function(tagName, attr, context, fnEach){
-			var xpath, prefixedTN = pub.prefixTagName(tagName);
-			if(typeof document.evaluate !== "undefined"){
-				xpath = "//"+prefixedTN+"[@"+attr+"]";
-				return pub.evaluate(xpath, context, fnEach);
+		pub.byAttribute = function(tagName, attrSel, context, fnEach){
+			context = context || document;
+			if(context.querySelector !== undefined)
+			{
+				var result = context.querySelectorAll(tagName+"["+attrSel+"]");
+				if(fnEach !== undefined)
+					HUX.Compat.forEach(result, fnEach);
+				return HUX.toArray(result);
 			}
-			else
-				return byAttributeIE(tagName, attr, context, fnEach);
+			else{ // fallback (mostly for IE 7-)
+				var resSplitAttrSel = pub.splitAttrSel(attrSel);
+				    fnMatch = oFnMatchAttrValIE[ resSplitAttrSel.op ],
+				    attrName = resSplitAttrSel.attrName, 
+				    expectedVal = resSplitAttrSel.attrVal;
+				    fnFilter = function(el){ 
+					var foundVal = el.getAttribute(attrName);
+					return (!!foundVal) && fnMatch(foundVal, expectedVal); // NOTE: IE7 returns "" if the attribute does not exist
+				    }; 
+				return pub.filterIE(tagName, fnFilter, context, fnEach);
+			}
 		};
 		
 		/**
@@ -823,79 +824,20 @@ var HUX = {
 		 * similar to <byAttribute>, but search for HUX attributes whatever the prefix is
 		 * 
 		 * Parameters:
-		 * 	- *tagName* : {String} the tagName of the element you look for
-		 * 	- *attr* : {String} the attribute to look for
-		 * 	- *context* : {Element} the element in which one will search (optional)
-		 * 	- *fnEach* : {Function} thefunction executed for each result (optional)
+		 * 	- *tagName*: {String} the tagName of the element you look for
+		 * 	- *attrSel*: {String} the attribute selector (supported : "att", "att=val", "att^=val, "att*=val", "att$=val"). See CSS3 attribute selectors
+		 * 	- *context*: {Element} the element in which one will search (optional)
+		 * 	- *fnEach*: {Function} thefunction executed for each result (optional)
 		 * 
 		 * Returns:
-		 * 	- {Array of Element} the elements found
+		 * 	- {Array of Elements} the elements found
 		 */
-		pub.byAttributeHUX = function(tagName, attr, context, fnEach){
-			var xpath, prefixedTN, attrs = HUX.HUXattr.getAttrAllPrefixes(attr), sAttrXP, ieRet = [];
-			prefixedTN = pub.prefixTagName(tagName);
-			if(typeof document.evaluate !== "undefined"){
-				sAttrXP = attrs.join(" or @"); // sAttrXP = "data-attr OR @data-hux-attr OR @hux:attr"
-				xpath = "./descendant-or-self::"+prefixedTN+"[@"+sAttrXP+"]";
-				return pub.evaluate(xpath, context, fnEach);
-			}
-			else{
-				HUX.Compat.forEach(attrs, function(attr){
-					ieRet = ieRet.concat( byAttributeIE(tagName, attr, context, fnEach) );
-				});
-				return ieRet;
-			}
+		pub.byAttributeHUX = function(tagName, attrSel, context, fnEach){
+			var prefixedAttrSel = HUX.HUXattr.getAttrPrefix(attrSel);
+			return pub.byAttribute(tagName, prefixedAttrSel, context, fnEach);
 		};
-		/**
-		 * Function:nsResolver
-		 * function used by document.evaluate in <evaluate> for namespaces
-		 * 
-		 * Parameters:
-		 * 	- *prefix*: {String} the prefix used in the XPath expression
-		 * 
-		 * Returns :
-		 * 	- {String} the namespace
-		 */
-		pub.nsResolver = function(prefix){
-			var ns = {
-				"hux":HUX.namespace,
-				"xhtml":"http://www.w3.org/1999/xhtml"
-			};
-			if(!prefix)
-				return ns.xhtml;
-			return ns[prefix];
-		};
-		/**
-		 * Function: evaluate
-		 * 
-		 * evaluates an XPath Expression
-		 * 
-		 * NOTES: 
-		 *  - use Selector.filterIE when you detect that IE is being used
-		 *  - we use document.evaluate instead of document.querySelectorAll because of the non-implementation of namespace gestion in CSS3 selectors 
-		 *  - if you use a context, your xpath expression may begin with a dot (example : "./descendant-or-self::p" for selecting all paragraphs in the context)
-		 *  - See Also prefixTagName for convenience with the tagName of the elements
-		 * 
-		 * Parameters:
-		 * 	- *sXpath* : {String} the xpath expression
-		 * 	- *context* : {Element or Document} the element where we will search for results (default : document)
-		 * 	- *fnEach* : {Function} the function executed for each results (default: empty function)
-		 * 
-		 * Returns: 
-		 * 	- {Array of Element} the elements found
-		 */
-		pub.evaluate = function(sXpath, context, fnEach){
-			context = context || document;
-			fnEach = fnEach || function(){};
-			var results = document.evaluate(sXpath, context, pub.nsResolver, XPathResult.ANY_TYPE, null); 
-			var thisResult;
-			var ret = [];
-			while ( (thisResult = results.iterateNext()) !== null) {
-				ret.push(thisResult);
-				fnEach(thisResult);
-			}
-			return ret;
-		};
+		
+		
 		/**
 		 * Function: filterIE
 		 * IE does not implement document.evaluate. So, this function is a generic fallback
@@ -948,8 +890,10 @@ var HUX = {
 						if(xhr.readyState  === 4){
 							if(xhr.status  === 200) 
 								onSuccess(xhr, filling, target);
-							else 
+							else {
+								HUX.HUXEvents.trigger("requestError", {xhr:xhr,filling:filling,target:target});
 								onError(xhr, filling, target);
+							}
 						}
 					}
 					catch(ex){
@@ -972,10 +916,18 @@ var HUX = {
 		var pub = {};
 		// see HUX.xhr(opt)
 		pub.proceed = function(opt){
-			if(opt.url.length === 0)
-				throw new TypeError("invalid arguments");
-			if(typeof opt.target === "string") // if opt.target is an id string, get the matching element 
-				opt.target = document.getElementById( opt.target );
+			if(! opt.url ) // opt.url === undefined || opt.url === null || opt.url === ""
+				throw new TypeError("invalid argument : opt.url");
+			if(! opt.target)
+				throw new TypeError("invalid argument : opt.target");
+			if(typeof opt.target === "string"){ // if opt.target is an id string, get the matching element 
+				var target = document.getElementById( opt.target );
+				if(! target) // === undefined or === null
+					throw "#"+opt.target+" not found";
+				else
+					opt.target = target;
+			}
+			
 			try{
 				var data = null, xhr;
 				// mainly for stageclassmgr
@@ -1019,7 +971,7 @@ var HUX = {
 			HUX.inject(target, filling, (xhr.responseXML && xhr.responseXML.documentElement)? xhr.responseXML : xhr.responseText);
 		};
 		pub.onError = function(xhr, filling, target){
-			HUX.HUXEvents.trigger("requestError", {xhr:xhr,filling:filling,target:target});
+			HUX.inject(target, null, "<h1>"+xhr.status+" : "+xhr.statusText+"</h1>");
 		};
 		return pub;
 	})(),
@@ -1052,10 +1004,7 @@ var HUX = {
 	 * Attribute Manager for HUX
 	 */
 	HUXattr: (function(){
-		/** =================== PRIVATE ================== **/ 
-		var getAttributeNS = function(srcElement, name){
-			return srcElement.getAttributeNS ? srcElement.getAttributeNS(HUX.namespace, name) : srcElement.getAttribute("hux:"+name);
-		};
+		
 	   
 		/** =================== PUBLIC ================== **/ 
 		var pub = {};
@@ -1071,15 +1020,7 @@ var HUX = {
 		 * 	- {String} the value of the attribute
 		 */
 		pub.getAttributeHUX = function(el, name){
-			var ret = null,  attrs = pub.getAttrAllPrefixes(name), i;
-			for(i = 0; i < attrs.length && ret === null; i++){
-				ret = el.getAttribute( attrs[i] );
-			}
-			if(ret === null) // this might be because of non-support of Opera for getAttribute("hux:...")
-				ret = getAttributeNS(el, name);
-			if(ret === "") // correct odd behaviour of getAttributeNS, which returns "" if the attribute was not found
-				ret = null;
-			return ret;
+			return el.getAttribute( pub.getAttrPrefix(name) );
 		};
 		/**
 		 * Function: getFillingMethod
@@ -1109,22 +1050,17 @@ var HUX = {
 			return document.getElementById(idTn);
 		};
 		/**
-		 * Function: getAttrAllPrefixes
-		 * returns all the possible prefixed name for an attribute
+		 * Function: getAttrPrefixes
+		 * returns the prefixed attribute name 
 		 * 
 		 * Parameters: 
 		 * 	- *attr*: {String} the unprefixed attribute name
 		 * 
 		 * Returns: 
-		 * 	- {Array} all the possible prefixed name
+		 * 	- {String} the prefixed attribute name
 		 */
-		pub.getAttrAllPrefixes = function(attr){
-			return [
-				"data-hux-"+attr,
-				"data-"+attr,
-				"hux:"+attr
-				// removed non-prefixed attribute because of conflicts with target
-			];
+		pub.getAttrPrefix = function(attr){
+			return "data-hux-"+attr;
 		};
 		return pub;
 		
@@ -1208,7 +1144,7 @@ var HUX = {
 		};
 		/**
 		 * Function: addEventListenerOnce
-		 * adds an event listener and ensure that teh listener will be called only once
+		 * adds an event listener and ensure that the listener will be called only once
 		 * 
 		 * 
 		 * Parameters: 
@@ -1304,27 +1240,35 @@ var HUX = {
 	 * Namespace: Browser
 	 * information about the used browser
 	 */
-	Browser: {
-		layout_engine: /(Gecko|AppleWebKit|Presto)\/|(MSIE) /.exec(navigator.userAgent)[0].replace(/(\/| )$/, "").replace("MSIE", "Trident"),
-		__prefixes: {"Gecko":"moz", "AppleWebKit":"webkit", "Presto":"o", "Trident":"ms"},
+	Browser: (function(){
+		/** =================== PRIVATE ================== **/ 
+		var __prefixes = {"Gecko":"moz", "AppleWebKit":"webkit", "Presto":"o", "Trident":"ms"}
+		
+		/** =================== PUBLIC ================== **/ 
+		var pub = {};
+		pub.layout_engine= /(Gecko|AppleWebKit|Presto)\/|(MSIE) /.exec(navigator.userAgent)[0].replace(/(\/| )$/, "").replace("MSIE", "Trident");
 		/**
-		 * Function: evtPrefix
-		 * returns the prefix for browser-specific events (like (webkit|o)transitionend for Webkit and Presto)
-		 */
-		evtPrefix: function(){
-			return this.__prefixes[this.layout_engine]; // example : moz
-		},
+		* Function: evtPrefix
+		* returns the prefix for browser-specific events (like (webkit|o)transitionend for Webkit and Presto)
+		*/
+		pub.evtPrefix= function(){
+			return __prefixes[pub.layout_engine]; // example : moz
+		};
 		/**
-		 * Function: cssPrefix
-		 * returns the prefix for browser-specific css properties (like (-webkit-|-o-|-moz-)transition)
-		 */
-		cssPrefix: function(){
-			return "-"+this.evtPrefix()+"-"; // example : -moz-
-		},
-		isOldMSIE: function(){
+		* Function: cssPrefix
+		* returns the prefix for browser-specific css properties (like (-webkit-|-o-|-moz-)transition)
+		*/
+		pub.cssPrefix = function(){
+			return "-"+pub.evtPrefix()+"-"; // example : -moz-
+		};
+		/*pub.isOldMSIE = function(){
 			return /MSIE [0-8]/.test(navigator.userAgent);
+		};*/
+		pub.getMSIEVersion = function(){
+			return (navigator.userAgent.match(/MSIE ([0-9]+)/) || [null, null])[1];
 		}
-	}
+		return pub;
+	})()
 };
 
 HUX.addModule( HUX );
@@ -1525,7 +1469,7 @@ HUX.PairManager = function(callbacks){
 		var ret = [],
 		    eTarget = document.getElementById(target);
 		HUX.Compat.forEach(candidates, function(candidate){
-			var cur = document.getElementById(candidate.target), 
+			var cur = document.getElementById(candidate.target) || {parentNode:null}, 
 			    isDesc = false; // is the candidate descendant of target ?
 			while( (cur = cur.parentNode)  && !isDesc) // we go through the ancestors of candidate
 				isDesc = cur === eTarget; 
@@ -1544,29 +1488,30 @@ HUX.PairManager = function(callbacks){
 	 */
 	var splitPair = function(sPair){
 		var pair;
-		pair = sPair.replace(/^!/, "").split("=");
+		pair = sPair.replace(/^!/, "").split(/=/);
 		return {target:pair[0], url:pair[1]};
 	};
-	
 	this.change = function(sPairs){
 		var reModif = /^!?[+-]/, isModif = reModif.test( sPairs[0] ); // isModif === true if the first character of the first pair equals to '+' or '-'
 		
 		if(isModif) {
-			HUX.Compat.forEach(sPairs, function(sPair){
+			for(var i = 0; i < sPairs.length; i++){
 				
-				var bangOffset = (sPair.charAt(0)==='!'?1:0), op = sPair.charAt(bangOffset), pair, sTarget;
+				var sPair = sPairs[i], bangOffset = (sPair.charAt(0)==='!'?1:0), op = sPair.charAt(bangOffset), pair, sTarget;
 				sPair = sPair.slice(bangOffset+ 1); // we remove '+' or '-' from sPair
 				if(op === '-'){
 					this.removePair(sPair);
 				}
 				else if(op === '+'){
 					pair = splitPair(sPair);
-					this.setPair(pair.target, pair.url);
+					var res = this.setPair(pair.target, pair.url);
+					if(res.ok === false)
+						break;
 				}
 				else{
 					throw "wrong operator for pair modification";
 				}
-			}, this);
+			}
 		}
 		else{
 			// in order to optimize, we look for the first index where there is differences,
@@ -1577,12 +1522,16 @@ HUX.PairManager = function(callbacks){
 			
 			sPairs = sPairs.slice(i); // we only keep sPairs elements whose index are greater or equal to i
 			this.removeAt(i, "all"); 
-			HUX.Compat.forEach(sPairs, function(sPair, i){
+			
+			for(var i = 0; i < sPairs.length; i++){
+				var sPair = sPairs[i], pair, res;
 				if(sPair.length > 0){
-					var pair = splitPair(sPair);
-					this.setPair(pair.target, pair.url);
+					pair = splitPair(sPair),
+					res = this.setPair(pair.target, pair.url);
+					if(res.ok === false)
+						break;
 				}
-			}, this);
+			}
 		}
 	};
 	/**
@@ -1592,6 +1541,8 @@ HUX.PairManager = function(callbacks){
 	 * Parameters: 
 	 *  - target : {String} the target ID of the pair
 	 *  - url : {String} the URL of the pair
+	 * 
+	 * Returns: {index:index, ok:ok} where index is the index of the new pair and ok is the result of the callback
 	 */
 	this.setPair = function(target, url){
 		var index = this.indexOf(target), ok = true;
@@ -1614,7 +1565,7 @@ HUX.PairManager = function(callbacks){
 			if(ok !== false)
 				this.push( added );
 		}
-		return index;
+		return {index: index, ok: ok};
 	};
 	/**
 	 * Function: removePair
@@ -1852,12 +1803,24 @@ HUX.HashMgr = {
 		fnEach = function(el){
 			HUX.Compat.addEventListenerOnce(el, "click", HUX.HashMgr.onClick);
 		};
-		// we look for anchors whose href beginns with "#!" 
-		if(document.evaluate !== undefined){
-			prefixedTN = HUX.Selector.prefixTagName("a");
-			HUX.Selector.evaluate("./descendant-or-self::"+prefixedTN+"[starts-with(@href, '#!')]", context, fnEach);
-		}
-		else{
+		// we look for anchors whose href begins with "#!" 
+		// so anchors with hash operations ("#!+", "#!-") can be treated before location.hash is changed
+		HUX.HashMgr.findAnchors(context, fnEach);
+	},
+	/**
+	 * Function: findAnchors
+	 * gets the anchors with hashbangs within a context node
+	 * 
+	 * Parameters:
+	 * 	- *context*: {Element} the context node
+	 * 	- *fnEach*: {Function} the function to execute for each found element
+	 * 
+	 * Returns:
+	 * 	- {Array of Elements} the found elements
+	 */
+	findAnchors: function(context, fnEach){
+		var msieVers = HUX.Browser.getMSIEVersion();
+		if(msieVers && msieVers <= 7){
 			fnFilter = function(el){  
 				// NOTE : el.getAttribute("href", 2) does not always work with IE 7, so we use this workaround to 
 				// test if the href attribute begins with "#!"
@@ -1865,8 +1828,10 @@ HUX.HashMgr = {
 			};
 			HUX.Selector.filterIE("a", fnFilter, context, fnEach);
 		}
+		else{
+			HUX.Selector.byAttribute("a", "href^='!#'", context, fnEach);
+		}
 	},
-	
 	/*
 	 * Function: handleIfChangement
 	 * handles the hash changement
@@ -1936,7 +1901,7 @@ HUX.HashMgr = {
 	 * 
 	 * Parameters:
 	 * 	- *hash*: {String} the new hash to set 
-	 * 	- *keepPrevHash*: {Boolean} true if we do not change the current hash (default: false)
+	 * 	- *keepPrevHash*: {Boolean} true if we do not change the current hash (optional; default: false)
 	 */
 	updateHash: function(hash, keepPrevHash){
 		if( hash.replace(/^#/, "") !== location.hash.replace(/^#/, "") ){
@@ -2194,17 +2159,18 @@ HUX.Form = {
 			var arrData = [], opt;
 			// we fill the option object
 			if(arg1.nodeType === 1 && arg1.tagName === "FORM"){
+				var form = arg1;
 				opt = {
 					data:null, // set below
-					url:arg1.action,
-					method:arg1.getAttribute("method"),
+					url:form.action,
+					method:form.getAttribute("method"),
 					async:HUX.Form.async,
-					filling:HUX.HUXattr.getFillingMethod(arg1) || HUX.Form.defaultFilling,
-					target:HUX.HUXattr.getTarget(arg1) || undefined/*, // 
+					filling:HUX.HUXattr.getFillingMethod(form) || HUX.Form.defaultFilling,
+					target:HUX.HUXattr.getTarget(form) || undefined/*, // 
 					srcElement:form // ????*/
 				};
 				// we fill arrData : 
-				HUX.Selector.byAttribute("*", "name", arg1, function(el){
+				HUX.Selector.byAttribute("*", "name", form, function(el){
 					HUX.Form.serialize(el, arrData);
 				});
 				
@@ -2216,7 +2182,7 @@ HUX.Form = {
 			
 			// we call the XHR method
 			HUX.xhr(opt);
-			
+			return opt;
 		}
 		catch(ex){
 			HUX.logError(ex);
@@ -2745,7 +2711,7 @@ HUX.Overlay = {
 
 HUX.addModule( HUX.Overlay );
 /**
-    HTTP Using XML (HUX) : UrlManager
+    HTTP Using XML (HUX) :At Manager
     Copyright (C) 2011  Florent FAYOLLE
     
     Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -2765,241 +2731,536 @@ HUX.addModule( HUX.Overlay );
     OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
     THE SOFTWARE.
 **/
-HUX.UrlMgr = {
-	// history level
-	level:0,
-	// OLD_CONTENT corresponds to content that have been deleted. onPopState loads this type of content if the user goes back
-	OLD_CONTENT:1,
-	// NEW_CONTENT corresponds to content that have been added. onPopState loads this type of content if the user goes forward
-	NEW_CONTENT:2,
-	pairs: null,
-	enabled: !!history.pushState,
-	/**
-	 * Callbacks per action (add, delete or replace a pair in @...).
-	 */
-	pairsCallbacks: {
-		onAdd: function(added){
-			var sTarget = added.target, target = document.getElementById(sTarget), self = HUX.UrlMgr;
-			if(target !== null){
-				self.__default_contents[sTarget] = target.innerHTML;
-				return self.load(target, added.url);
-			}
-			else{
-				return false;
-			}
-		},
-		onReplace: function(added){
-			var target = document.getElementById(added.target), self = HUX.UrlMgr;
-			if(target !== null){
-				return self.load(target, added.url);
-			}
-			else{
-				return false;
-			}
-		},
-		onDelete: function(deleted){
-			var sTarget = deleted.target, replacement = HUX.UrlMgr.__default_contents[sTarget];
-			if(replacement !== undefined){
-				var target = document.getElementById(sTarget);
+// atmgr.hux.js
+HUX.AtMgr = (function(){
+	/** =================== INNER FUNCTIONS ================== **/ 
+	var inner = {
+		enabled: !!history.pushState,
+		// history level
+		level:0,
+		pairs: null,
+		
+		/**
+		 * Callbacks per action (add, delete or replace a pair in @...).
+		 */
+		pairsCallbacks: {
+			onAdd: function(added){
+				var sTarget = added.target, target = document.getElementById(sTarget);
 				if(target !== null){
-					HUX.HUXEvents.trigger("loading", {target: target });
-					HUX.inject(target, "replace", replacement);
-					return true;
+					inner.default_contents[sTarget] = target.innerHTML;
+					return inner.load(target, added.url);
 				}
+				else{
+					return false;
+				}
+			},
+			onReplace: function(added){
+				var target = document.getElementById(added.target);
+				if(target !== null){
+					return inner.load(target, added.url);
+				}
+				else{
+					return false;
+				}
+			},
+			onDelete: function(deleted){
+				var sTarget = deleted.target, replacement = inner.default_contents[sTarget];
+				if(replacement !== undefined){
+					var target = document.getElementById(sTarget);
+					if(target !== null){
+						HUX.HUXEvents.trigger("loading", {target: target });
+						HUX.inject(target, "replace", replacement);
+						return true;
+					}
+				}
+				return false;
 			}
-			return false;
-		}
-	},
-	preventDefaultIfDisabled: false,
-	asyncReq: false,
-	state:  null,
-	__default_contents : {},
-	init: function(){
-		this.pairs = this.createPairMgr(this.pairsCallbacks);
-		if(! this.enabled )
-			return;
-		if(!this.getState() || ! ( (this.getState().HUXStates || null) instanceof Array) ){
-			this.initHUXState();
-		}
-		this.addObjectToState({});
-		HUX.addLiveListener( this );
+		},
+		asyncReq: false,
+		state:  null,
+		default_contents : {},
 		
-		this.pairs.toString = function(){
-			return "@"+this.map(function(a){ return a.target+"="+a.url; }).join();
-		};
-		if( this.pairs.toString() !== ( location.pathname.match(/@.*/)||["@"] )[0] ){
-			this.pushState([], "", location.pathname.replace(/@.*/g, "") + this.pairs.toString());
-		}
-	},
-	setEnabled: function(value){
-		this.enabled = value;
-	},
-	createPairMgr: function(callbacks){
-		return HUX.PairManager.split((location.pathname.match(/[^@]@(.*)/) || ["",""])[1], /([^=,]+)=([^=,]+)/g, callbacks);
-	},
-	listen: function(context){
-		var self = HUX.UrlMgr;
-		// this module works only with modern browsers which implements history.pushState
-		// so we suppose that they implement evaluate as well...
-		HUX.Selector.evaluate( "./descendant-or-self::a[starts-with(@href, '@')]", context, function(el){ 
-			HUX.Compat.addEventListener(el, "click", function(){self.onClick.apply(self,arguments)}); 
-		});
-	},
-	getState: function(){
-		return history.state !== undefined ? history.state : HUX.UrlMgr.state;
-	},
-	updateState: function(state){
-		if(!history.state)
-			HUX.UrlMgr.state = state;
-	},
-	load: function(target, url){
-		var opt = {
-                        data:null,
-                        url:url,
-                        method:'get',
-                        async:this.asyncReq,
-                        filling:"replace", 
-                        target:target
-                };
+		/**
+		 * Function; createPairMgr
+		 * creates an instance of HUX.PairManager for AtMgr
+		 * 
+		 * Parameters:
+		 * 	- *callbacks*: {Object} the callback object
+		 * 
+		 * Returns:
+		 * 	- {HUX.PairManager} the instance
+		 */
+		createPairMgr: function(callbacks){
+			return HUX.PairManager.split((location.toString().match(/[^@]@(.*)/) || ["",""])[1], /([^=,]+)=([^=,]+)/g, callbacks);
+		},
 		
-                var xhr = HUX.xhr(opt);
-		return xhr.status === 200;
-	},
-	getNewState: function(target, url){
-		var reExtract = new RegExp(location.pathname+".*");
-		var curState = location.href.match(reExtract)[0];
-		var newState = curState.replace( /(@.*|$)/, this.pairs.toString());
-		return newState;
-	},
-	initHUXState: function(){
-		var state = this.getState() || {};
-		state.HUXStates = [];
-		state.level = this.level;
-		history.replaceState(state, "", "");
-	},
-	getProxyOnClickCallback: function(fnOrig, newHUXStates){
-		var self = this;
-		return function(oTarget){
-			var obj, target, ret, sTarget = oTarget.target;
-			target = document.getElementById( sTarget );
-			if(target !== null)
-				obj = {target: sTarget, content:target.innerHTML, type:self.OLD_CONTENT};
-			ret = fnOrig.apply(this, arguments);
-			if(ret && target !== null){
-				self.addObjectToState(  obj  );
-				newHUXStates.push( {target: sTarget, content:target.innerHTML, type:self.NEW_CONTENT} );
+		findAnchors: function(context, fnEach){
+			var msieVers = HUX.Browser.getMSIEVersion();
+			if(msieVers && msieVers <= 7){
+				var fnFilter = function(el){  
+					// NOTE : el.getAttribute("href", 2) does not always work with IE 7, so we use this workaround to 
+					// test if the href attribute begins with "#!"
+					return el.href.indexOf( location.href.replace(/@.*|#.*/g, "")+"@" ) === 0;  
+				};
+				HUX.Selector.filterIE("a", fnFilter, context, fnEach);
 			}
-			return ret;
-		};
-	},
-// 	/**
-// 	 * extracts the target and the URL from a string
-// 	 */
-// 	splitPair: function(sPair){
-// 		var pair;
-// 		pair = sPair.split("=");
-// 		//target = document.getElementById(pair[0]);
-// 		return {sTarget:pair[0], url:pair[1]};
-// 	},
-	onClick: function(event){
-		HUX.Compat.preventDefault(event);
-		var at = HUX.Compat.getEventTarget(event).href;
-		this.changeAt(at);
-	},
-	changeAt: function(at, addNewState){
-		at = at.replace(/.*@!?/g, "");
-		var sPairs = at.split(/,!?/), 
-		    newHUXStates = []; // empty for now ...
-		this.pairs.change(sPairs);
-		if(addNewState !== false) // default is true
-			this.pushState(newHUXStates, "", this.pairs.toString());
-	},
-	pushState: function(obj, title, newState){
-		var state = {HUXStates: obj};
-		state.level = ++this.level;
-		history.pushState(state, title, newState);
-	},
-	addObjectToState: function(obj, title){
-		var state = this.getState();
-		if(!state)
-			throw new Error("state is null");
-		state.HUXStates = (state.HUXStates || []).filter(function(el){return el.target !== obj.target || el.type !== obj.type;}).concat([obj]);
-		history.replaceState(state, title, "");
-	},
-	onPopState: function(event){
-		try{
-			var state = event.state, self = HUX.UrlMgr;
-			if(!state || state.level === undefined || !self.enabled)
+			else{
+				HUX.Selector.byAttribute( "a", "href^='@'", context, fnEach);
+			}
+		},
+		
+		/**
+		 * Function: updateState
+		 * sets the history state if history.state does not exist
+		 */
+		updateState: function(state){
+			if(!history.state)
+				inner.state = state;
+		},
+		/**
+		 * Function: load
+		 * does an xhr request and inject the content in the target element
+		 * 
+		 * Parameters:
+		 * 	- *target*: {Element} the target element
+		 * 	- *url*: {String} the location of the content
+		 * 
+		 * Returns:
+		 * 	- {Boolean} true if the xhr request succeeded (xhr.status==200)
+		 */
+		load: function(target, url){
+			var opt = {
+				data:null,
+				url:url,
+				method:'get',
+				async:inner.asyncReq,
+				filling:"replace", 
+				target:target
+			};
+			
+			var xhr = HUX.xhr(opt);
+			return xhr.status === 200;
+		},
+		/**
+		 * Function: initHUXState
+		 * initializes the history state
+		 */
+		initHUXState: function(){
+			var state = pub.getState() || {};
+			state.HUX_AT = {
+				info: [],
+				level: inner.level
+			};
+			history.replaceState(state, "", "");
+		},
+		/**
+		 * Function: onClick
+		 * click event handler for links with atinclusions
+		 */
+		onClick: function(event){
+			HUX.Compat.preventDefault(event);
+			var at = HUX.Compat.getEventTarget(event).href;
+			pub.changeAt(at);
+		},
+		
+		/**
+		 * Function: pushState
+		 * adds a new history state
+		 * 
+		 * 
+		 */
+		pushState: function(obj, title, newState){
+			var state = {
+				HUX_AT:{
+					info: obj,
+					level: ++inner.level
+				}
+			};
+			history.pushState(state, title, newState);
+		},
+		/**
+		 * Function: onPopState
+		 * popstate event handler
+		 */
+		onPopState: function(event){
+			try{
+				var state = event.state;
+				if(!state || state.HUX_AT === undefined || !inner.enabled)
+					return;
+				inner.updateState( state );
+				/*var old_level = inner.level;
+				inner.level = inner.level;*/
+				pub.changeAt(location.toString(), false);
+			}
+			catch(ex){
+				HUX.logError(ex);
+			}
+		}
+	};
+	
+	
+	/** =================== PUBLIC ================== **/ 
+	var pub = {
+		inner: inner,
+		
+		/**
+		 * Function: changeAt
+		 * adds or replaces atinclusions in the URL
+		 * 
+		 * Parameters:
+		 * 	- *at*: {String} the atinclusion string
+		 * 	- *addNewState*: {Boolean} indicates if a new state is added (optional; default=true)
+		 */
+		changeAt: function(at, addNewState){
+			at = at.replace(/.*@!?/g, "");
+			var sPairs = at.split(/,!?/), 
+			    newInfo = []; // empty for now ...
+			inner.pairs.change(sPairs);
+			if(addNewState !== false){ // default is true
+				var filename = (location.toString().match(/.*\/([^@]*)/) || [null,""])[1];
+				inner.pushState(newInfo, "", filename +  inner.pairs.toString());
+			}
+		},
+		init: function(){
+			if(! inner.enabled )
 				return;
-			self.updateState( state );
-			var old_level = self.level;
-			self.level = state.level;
-			self.changeAt(location.pathname, false);
+			inner.pairs = inner.createPairMgr(inner.pairsCallbacks);
+			if(!pub.getState() || ! ( (pub.getState().HUX_AT || null) instanceof Object) ){
+				inner.initHUXState();
+			}
+			//this.addObjectToState({});
+			HUX.addLiveListener( this );
+			
+			inner.pairs.toString = function(){
+				return "@"+this.map(function(a){ return a.target+"="+a.url; }).join();
+			};
+			if( inner.pairs.toString() !== ( location.toString().match(/@.*/)||["@"] )[0] ){
+				inner.pushState([], "", location.toString().replace(/@.*/g, "") + inner.pairs.toString());
+			}
+		},
+		listen: function(context){
+			// this module works only with modern browsers which implements history.pushState
+			// so we suppose that they implement evaluate as well...
+			inner.findAnchors(context, function(el){ 
+				HUX.Compat.addEventListener(el, "click", inner.onClick); 
+			});
+		},
+		/**
+		 * Function; getState
+		 * gets the history state
+		 */
+		getState: function(){
+			return history.state !== undefined ? history.state : inner.state;
+		},
+		setEnabled: function(val){
+			inner.enabled = val;
 		}
-		catch(ex){
-			HUX.logError(ex);
-		}
-	}
-};
-HUX.Compat.addEventListener( window, "popstate", HUX.UrlMgr.onPopState );
-HUX.addModule( HUX.UrlMgr );
+	};
+	
+	
+	return pub;
+})();
+
+HUX.Compat.addEventListener( window, "popstate", HUX.AtMgr.inner.onPopState );
+HUX.addModule( HUX.AtMgr );
+
 
 (function(){
 	var proxy;
-	// we update HUx.UrlMgr.state each time pushState or replaceState is called
-	// for browsers which do not have history.state
+	// we update HUX.AtMgr.state each time pushState or replaceState are called
+	// for browsers which do not have history.state (currently Chrome and Safary)
 	if(history.pushState && history.state === undefined){
 		proxy = function(origFn, state){
 			origFn.execute(history);
-			HUX.UrlMgr.updateState( state );
+			HUX.AtMgr.inner.updateState( state );
 		};
 		history.pushState = HUX.wrapFn(history.pushState, proxy );
 		history.replaceState = HUX.wrapFn(history.replaceState,  proxy );
 	}
 	
 })();
-
+/**
+    HTTP Using XML (HUX) : At Manager Fallback
+    Copyright (C) 2011  Florent FAYOLLE
+    
+    Permission is hereby granted, free of charge, to any person obtaining a copy
+    of this software and associated documentation files (the "Software"), to deal
+    in the Software without restriction, including without limitation the rights
+    to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+    copies of the Software, and to permit persons to whom the Software is
+    furnished to do so, subject to the following conditions:
+    The above copyright notice and this permission notice shall be included in
+    all copies or substantial portions of the Software.
+    
+    THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+    IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+    FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+    AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+    LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+    OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+    THE SOFTWARE.
+**/
 /**
  * 
  * converts links of type "@..." to "#!..."
  * if history.pushState is not available
  * 
- * Requires: HUX.UrlMgr, HUX.HashMgr
+ * Requires: HUX.AtMgr, HUX.HashMgr
  */
 
-HUX.UrlMgrFb = {
-	enabled: ! HUX.UrlMgr.enabled,
+HUX.AtMgrFb = {
+	enabled: ! HUX.AtMgr.inner.enabled,
 	init: function(){
 		if(this.enabled){
 			HUX.addLiveListener(this);
 		}
 	},
 	listen: function(context){
-		if(document.evaluate){
-			var links = HUX.Selector.evaluate( "./descendant-or-self::a[starts-with(@href, '@')]", context);
-			HUX.Compat.forEach(links, this.replaceEach, this);
-		}
-		else{
-			fnFilter = function(el){  
-				// NOTE : el.getAttribute("href", 2) does not always work with IE 7, so we use this workaround to 
-				// test if the href attribute begins with "#!"
-				return el.href.indexOf( location.href.replace(/@.*|#.*/g, "")+"@" ) === 0;  
-			};
-			HUX.Selector.filterIE("a", fnFilter, context, this.replaceEach);
-		}
+		if(this.enabled)
+			HUX.AtMgr.inner.findAnchors(context, this.replaceEach);
+		
 	},
 	
 	replaceEach: function(el){
-		el.href = el.href.replace(/^.*@/, "#!").replace(",", ",!");
+		el.href = el.href.replace(/^.*@/, "#!").replace(/,([^!])/g, ",!$1");
 		// we ensure that the listener will not be called twice
 		HUX.Compat.addEventListenerOnce(el, "click", HUX.HashMgr.onClick); 
 	}
 	
 };
-(function(um){
-	um.setEnabled = HUX.wrapFn(um.setEnabled, function(fnOrig, val){
-		HUX.UrlMgrFb.enabled = !val;
+(function(am){
+	am.setEnabled = HUX.wrapFn(am.setEnabled, function(fnOrig, val){
+		HUX.AtMgrFb.enabled = !val;
 		return fnOrig.execute(um);
 	});
-})(HUX.UrlMgr);
-HUX.addModule(HUX.UrlMgrFb);
+})(HUX.AtMgr);
+HUX.addModule(HUX.AtMgrFb);
+ /**
+    HTTP Using XML (HUX) : Form Update Url
+    Copyright (C) 2011  Florent FAYOLLE
+    
+    Permission is hereby granted, free of charge, to any person obtaining a copy
+    of this software and associated documentation files (the "Software"), to deal
+    in the Software without restriction, including without limitation the rights
+    to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+    copies of the Software, and to permit persons to whom the Software is
+    furnished to do so, subject to the following conditions:
+    The above copyright notice and this permission notice shall be included in
+    all copies or substantial portions of the Software.
+    
+    THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+    IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+    FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+    AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+    LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+    OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+    THE SOFTWARE.
+**/
+
+HUX.FormUpdateUrl = {
+	defaultUpdateUrl: "enabled",
+	updateUrl: function(target, url, data){
+		// we test the first argument
+		if(typeof target === "string"){
+			if(document.getElementById("target") === null)
+				throw "HUX.Form.updateUrl : #"+target+" not found";
+		}	
+		if(target.nodeType !== undefined) 
+			target = target.id;
+		else
+			throw "HUX.Form.updateUrl : first argument must be either an id string or an HTML element";
+		var sPair = "+"+target+"="+url;
+		if(HUX.AtMgr !== undefined && HUX.AtMgr.enabled){
+			HUX.AtMgr.changeAt( sPair );
+		}
+		else if(HUX.HashMgr !== undefined && HUX.HashMgr.enabled){
+			HUX.HashMgr.updateHash( "#!"+sPair );
+		}
+		
+	}
+};
+
+HUX.Form.submit = HUX.wrapFn(HUX.Form.submit, function(orig, form){
+	var opt = orig.execute(HUX.Form); // we execute the proxied function
+	var updateUrl = HUX.HUXattr.getAttributeHUX(form, "updateurl") || HUX.FormUpdateUrl.defaultUpdateUrl;
+	if(opt.method.toLowerCase() === "get"
+	    && updateUrl !== "none"){
+		HUX.FormUpdateUrl.updateUrl( opt.target, opt.url, opt.data );
+	}
+});/**
+    HTTP Using XML (HUX) : XHTML Support
+    Copyright (C) 2011  Florent FAYOLLE
+    
+    Permission is hereby granted, free of charge, to any person obtaining a copy
+    of this software and associated documentation files (the "Software"), to deal
+    in the Software without restriction, including without limitation the rights
+    to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+    copies of the Software, and to permit persons to whom the Software is
+    furnished to do so, subject to the following conditions:
+    The above copyright notice and this permission notice shall be included in
+    all copies or substantial portions of the Software.
+    
+    THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+    IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+    FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+    AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+    LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+    OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+    THE SOFTWARE.
+**/ 
+/// NEEDS A TEST
+// xhtmlsupport.hux.js
+HUX.XHTMLSupport = (function(){
+	// private
+	var prefixTN = ""; // see INITIALIZATION
+	var doctype = document.doctype ? 
+			document.doctype.publicId : document.all[0].text; 
+	// we enable XHTMLSupport only if we detect XHTML in the doctype
+	var enabled = (doctype || "").indexOf("XHTML") >= 0;
+	
+	/**
+	 * variable: namespace
+	 * {String} the namespace of HUX for XHTML 
+	 */
+	var namespace = "urn:hux:1.0";
+	
+	var pub;
+	var selByAttributeHUX;
+	/**
+	 * Function: evaluate
+	 * 
+	 * evaluates an XPath Expression
+	 * 
+	 * NOTES: 
+	 *  - use Selector.filterIE when you detect that IE is being used
+	 *  - we use document.evaluate instead of document.querySelectorAll because of the non-implementation of namespace gestion in CSS3 selectors 
+	 *  - if you use a context, your xpath expression may begin with a dot (example : "./descendant-or-self::p" for selecting all paragraphs in the context)
+	 *  - See Also prefixTagName for convenience with the tagName of the elements
+	 * 
+	 * Parameters:
+	 * 	- *sXpath* : {String} the xpath expression
+	 * 	- *context* : {Element or Document} the element where we will search for results (default : document)
+	 * 	- *fnEach* : {Function} the function executed for each results (default: empty function)
+	 * 
+	 * Returns: 
+	 * 	- {Array of Elements} the found elements
+	 */
+	var evaluate = function(sXpath, context, fnEach){
+		context = context || document;
+		fnEach = fnEach || function(){};
+		var results = document.evaluate(sXpath, context, pub.nsResolver, XPathResult.ANY_TYPE, null); 
+		var thisResult;
+		var ret = [];
+		while ( (thisResult = results.iterateNext()) !== null) {
+			ret.push(thisResult);
+			fnEach(thisResult);
+		}
+		return ret;
+	};
+	/**
+	 * Function: nsResolver
+	 * function used by document.evaluate in <evaluate> for namespaces
+	 * 
+	 * Parameters:
+	 * 	- *prefix*: {String} the prefix used in the XPath expression
+	 * 
+	 * Returns :
+	 * 	- {String} the namespace
+	 */
+	var nsResolver = function(prefix){
+		var ns = {
+			"hux":pub.namespace,
+			"xhtml":"http://www.w3.org/1999/xhtml"
+		};
+		if(!prefix)
+			return ns.xhtml;
+		return ns[prefix];
+	};
+	
+	var getAttributeNS = function(srcElement, name){
+		// workaround if getAttributeNS is not provided
+		return srcElement.getAttributeNS ? srcElement.getAttributeNS(pub.namespace, name) : srcElement.getAttribute("hux:"+name);
+	};
+	
+	HUX.HUXattr.getAttributeHUX = HUX.wrapFn(HUX.HUXattr.getAttributeHUX , function(fnOrig, el, name){
+		return pub.enabled ? getAttributeNS(el, name) : fnOrig.execute();
+	});
+	HUX.HUXattr.getAttrPrefix = HUX.wrapFn(HUX.HUXattr.getAttrPrefix, function(fnOrig, attrName){
+		return pub.enabled ? "hux:"+attrName : fnOrig.execute();
+	});
+	/**
+	 * Function: prefixTagName
+	 * adds the prefix for the element depending on the document type (html or xhtml)
+	 * to be used to write an XPath Expression
+	 * 
+	 * Parameters:
+	 * 	- *tagName*: {String} the tagName
+	 * 
+	 * Returns:
+	 * 	- {String} the prefixed tagName
+	 */
+	var prefixTagName= function(tagName){
+		return prefixTN+tagName;
+	};
+	var oMapAttrValue = {
+		"*=": function(attrName, attrVal){
+			return "contains(@"+attrName+", \""+attrVal+"\")";
+		},
+		"^=": function(attrName, attrVal){
+			return "starts-with(@"+attrName+", \""+attrVal+"\")";
+		},
+		"=": function(attrName, attrVal){
+			return "@"+attrName+"=\""+attrVal+"\"";
+		},
+		"$=": function(attrName, attrVal){
+			return "substring(@"+attrName+", string-length(@"+attrName+")- string-length(\""+attrVal+"\") +1) = \""+attrVal+"\"";
+		},
+		undefined: function(attrName, attrVal){
+			return "@"+attrName;
+		}
+	};
+	// override HUX.Selector.byAttributeHUX
+	selByAttributeHUX = function(fnOrig, tagName, attrSel, context, fnEach){
+		if(!pub.enabled)
+			return fnOrig.execute();
+		var xpath, prefixedTN, sAttrXP, ieRet = [];
+		prefixedTN = pub.prefixTagName(tagName);
+		if(document.evaluate !== undefined){
+			var resSplit = HUX.Selector.splitAttrSel(attrSel),
+			    attrName = HUX.HUXattr.getAttrPrefix(resSplit.attrName),
+			    attrVal = resSplit.attrVal,
+			    sAttrXP = ( oMapAttrValue[resSplit.op] )(attrName, attrVal);
+			xpath = "./descendant-or-self::"+prefixedTN+"["+sAttrXP+"]";
+			return pub.evaluate(xpath, context, fnEach);
+		}
+		else{
+			HUX.Selector.byAttribute.call(HUX.Selector, tagName, attr, context, fnEach);
+		}
+	};
+	HUX.Selector.byAttributeHUX = HUX.wrapFn(HUX.Selector.byAttributeHUX, selByAttributeHUX);
+	
+	
+	
+	// public
+	pub = {
+		enabled:enabled,
+		evaluate: evaluate,
+		nsResolver: nsResolver,
+		namespace:namespace,
+		prefixTagName: prefixTagName
+	};
+	// INITIALIZATION
+	setTimeout(function(){
+		if(document.evaluate !== undefined){
+			if( pub.evaluate("/html").length > 0 )
+				prefixTN = "";
+			else if(pub.evaluate("/xhtml:html").length > 0)
+				prefixTN = "xhtml:";
+			else
+				throw new Error("Document non supported by HUX");
+		}
+	}, 0);
+	return pub;
+})();
+
+//HUX.addModule( HUX.XHTMLSupport );

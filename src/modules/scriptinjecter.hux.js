@@ -22,6 +22,8 @@
 
 // scriptinjecter.hux.js
 
+// NOTE : still experimental
+
 /**
  * Namespace: HUX.ScriptInjecter
  * inject scripts and run them when they are loaded
@@ -104,7 +106,7 @@ HUX.ScriptInjecter = {
 	/**
 	 * Function: loadScript
 	 * 
-	 * loads a script, having a src attribute
+	 * loads a script, having an src attribute
 	 * 
 	 * Parameters:
 	 * 	- *curScript* : {Element} the script to execute

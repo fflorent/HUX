@@ -1,6 +1,7 @@
-/* NOTE : experimental, needs improvement */
 .hux_loading {
 	opacity:0.5;
+	/* opacity for IE : */
+	filter: alpha(opacity=50);
 }
 
 body{
@@ -142,6 +143,7 @@ a{
 	border-radius:5px;
 	padding:20px 50px 20px 50px;
 	vertical-align:top;
+	text-align:justify;
 }
 
 .note, .warning{
@@ -151,8 +153,12 @@ a{
 	border: 1px solid;
 }
 
-h1, a{
+h1, h2, h3, a{
 	color: #0070ff;
+}
+
+h3 {
+	padding-left:30px;
 }
 
 .code, .rendering{
@@ -174,7 +180,52 @@ h1, a{
  * ===========  FEATURE   ============
  * =================================== */
 
-.feature_description td, .feature_description{
-	border-radius:2px;
+table.summary, table.summary td, table.summary th{
 	border:solid 1px;
+}
+table.summary td, table.summary th{
+	width: 250px;
+}
+/* ===================================
+ * =============  TUTO   =============
+ * =================================== */
+.sandbox img{
+	max-width:500px;
+}
+.sandbox, .tab {
+	border: 1px solid;
+	background-color: #FFF;
+	padding:  10px ;
+}
+.testit .tab, .usercodetxtarea{
+	min-height:150px;
+	width:100%;
+}
+.usercodetxtarea{
+	background-color:#222222;
+	color:greenYellow;
+}
+#testit-model, .result, .usercode{
+	display:none;
+}
+.testit-menu{
+	margin-bottom: 0;
+	padding-left: 0;
+}
+.testit-menu li {
+	display: inline;
+	list-style-type: none;
+}
+.testit-menu li a {
+	border: 1px solid;
+	border-bottom:0;
+	border-radius: 9px 9px 0 0;
+	color: inherit;
+	padding: 4px 4px 0;
+	text-decoration: none;
+	background-color: #EEEEEE;
+}
+.testit-menu li a:hover, .testit-menu li a.selected{
+	background-color: #FFFFFF;
+	padding-bottom: 1px;
 }

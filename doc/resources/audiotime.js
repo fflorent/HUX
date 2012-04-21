@@ -34,7 +34,7 @@ HUX.AudioTime = {
 			});
 		});
 		
-		this.adjustTime(context);
+		HUX.AudioTime.adjustTime(context);
 	},
 	updateState: function(id, currTime){
 		var ext = (id && document.getElementById(id)) ?  ",~"+id+"="+currTime   : "";
@@ -79,6 +79,6 @@ HUX.AudioTime = {
 	ampc.onAdd = HUX.wrapFn(ampc.onAdd,  proxy );
 	ampc.onReplace = HUX.wrapFn(ampc.onReplace,  proxy );
 	hmpc.onAdd = HUX.wrapFn(hmpc.onAdd,  proxy );
-})( HUX.AtMgr.inner.pairsCallbacks, HUX.HashMgr.pairsCallbacks ); 
+})( HUX.AtMgr.inner.pairsCallbacks, HUX.HashMgr.inner.pairsCallbacks ); 
 
 HUX.addModule(HUX.AudioTime);

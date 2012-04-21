@@ -27,63 +27,60 @@
  * Namespace: HUX.SimpleLoader
  * Loads content without URL update
  */
-HUX.SimpleLoader = {
-	sTarget:"target",
-	/**
-	 * Function: onClick
-	 * handler for Click Event
-	 */
-	onclick: function(ev){
-		try{
-			var srcElement = HUX.Compat.getEventTarget(ev) ;
-			var opt = {
-				data:null,
-				url:srcElement.href,
-				method:'get',
-				async:true,
-				filling:HUX.HUXattr.getFillingMethod(srcElement),
-				target:HUX.HUXattr.getTarget(srcElement)
-			};
-			HUX.xhr(opt);
-			HUX.Compat.preventDefault(ev);
+HUX.SimpleLoader = (function(){
+	var inner = {
+		sTarget:"target",
+		/**
+		* Function: onClick
+		* handler for Click Event
+		*/
+		onclick: function(ev){
+			try{
+				var srcElement = HUX.Compat.getEventTarget(ev) ;
+				var opt = {
+					data:null,
+					url:srcElement.href,
+					method:'get',
+					async:true,
+					filling:HUX.HUXattr.getFillingMethod(srcElement),
+					target:HUX.HUXattr.getTarget(srcElement)
+				};
+				HUX.xhr(opt);
+				HUX.Compat.preventDefault(ev);
+			}
+			catch(ex){
+				HUX.logError(ex);
+			}
+		},
+		fnEach: function(el){
+			HUX.Compat.addEventListener(el, "click", inner.onclick );
 		}
-		catch(ex){
-			HUX.logError(ex);
+	};
+	var pub = {
+		inner: inner,
+		/**
+		* Function: listen
+		* binds "click" event to inner.onClick function for each anchors having target attribute
+		* 
+		* Parameters : 
+		* 	- *context* : {Element} the context where we listen for events
+		*/
+		listen:function(context){
+			// for all anchor elements having target attributes, we listen to "click" events
+			HUX.Selector.byAttributeHUX("a", inner.sTarget, context, inner.fnEach);
+		},
+		/**
+		* Function: init
+		* inits the module. Calls addLiveListener
+		*/
+		init: function(){
+			HUX.addLiveListener(pub.listen);
 		}
-	},
-	fnEach: function(el){
-		HUX.Compat.addEventListener(el, "click", HUX.SimpleLoader.onclick );
-	},
-	/**
-	 * Function: listen
-	 * binds "click" event to HUX.SimpleLoader.onClick function for each anchors having target attribute
-	 * 
-	 * Parameters : 
-	 * 	- *context* : {Element} the context where we listen for events
-	 */
-	listen:function(context){
-		// for all anchor elements having target attributes, we listen to "click" events
-		HUX.Selector.byAttributeHUX("a", this.sTarget, context, this.fnEach);
-	},
-	/**
-	 * Function: init
-	 * inits the module. Calls addLiveListener
-	 */
-	init: function(){
-		HUX.addLiveListener(this);
-	}
-};
+	};
+	return pub;
+})();
 
 HUX.addModule(HUX.SimpleLoader); 
 
-HUX.addToAPI({"simpleload" : function(target, url, filling /* optional */){
-	HUX.xhr({
-		data:null,
-		url:url,
-		target:target,
-		filling: filling,
-		method: 'get',
-		async:true
-	});
-}});
+
 

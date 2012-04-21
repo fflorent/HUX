@@ -25,7 +25,7 @@
 // core.hux.js 
 
 //TODO : split the core ...
-
+"use strict";
 // nodeType Constants if not defined
 if(!document.ELEMENT_NODE)
 {
@@ -88,47 +88,6 @@ var HUX = {
 		});
 	},
 	
-	addToAPI: (function(){
-		
-		var isObject = function(obj){
-			return obj.constructor === Object; 
-		    },
-		    merge = function(obj, branch){
-			for(var i in obj){
-				var o = obj[i];
-				if(isObject(o)){ // if o is an object
-					if(branch[i] === undefined) // if it is not present in the current branch of HAPI
-						branch[i] = {}; // we create a new branch
-					else if(branch[i] instanceof Function)
-						throw new Exception("cannot create "+i+" because a function with this name already exists");
-					merge(o, branch[i]);
-				}
-				else if(o instanceof Function){
-					branch[i] = o; // we add the function to the branch of HAPI
-				}
-				else
-					throw "the object must only have other objects or functions";
-			}
-		    };
-		
-		return function(obj){
-			/*
-			var i, chunk, chunks = name.split('.'), cur = HAPI; 
-			for(i = 0; i < chunks.length-1; i++){// for each sub-namespace in name
-				chunk = chunks[i];
-				if(! (chunk in cur) )
-					cur[chunk] = {}; // we create a new object
-				if( typeof cur[ chunk ] === "function" )
-					throw "unable to to create HAPI."+name+" : HAPI."+chunks.slice(0,HUX.Compat.indexOf(chunk)).join('.')+" is not a namespace";
-				cur = cur[ chunk ];     // we go through
-			}
-			cur[ chunks[i] ] = func;      // we finally add func*/
-			if(! isObject(obj))
-				throw "argument must be simple object, containing functions or other simple objects";
-			merge(obj, HAPI);
-		};
-	})(),
-	
 	/**
 	 * Function: addLiveListener
 	 * 
@@ -137,33 +96,39 @@ var HUX = {
 	 * NOTE : this method should be called in an init() method of a module
 	 * 
 	 * Parameters:
-	 * 	- *mod* : {Object} a HUX module implementing listen(context) function
+	 * 	- *listen*: {Function or HUX Module} an HUX module implementing listen or the listen function itself
 	 * 
 	 * See also : 
 	 * 	- <init>
 	 * 
-	 * Example of use:
-	 * This example will count how many elements are parsed when the browser or HUX parsed new ones. 
-	 * >	HUX.myCounterModule = {
-	 * >		init: function(){
-	 * >			HUX.addLiveListener( this ); // this refers to HUX.myCounterModule
+	 * Example of use #1 :
+	 * >	HUX.hello = { 
+	 * > 		listen: function(context){ 
+	 * >			alert("hello world"); 
 	 * >		},
-	 * >		listen: function(context){
-	 * >			alert(context.getElementsByTagName("*").length+" elements have just been parsed");
+	 * >		init: function(){
+	 * >			HUX.addListener( HUX.hello );
 	 * >		}
 	 * >	};
-	 * >	HUX.addModule( HUX.myCounterModule ); // see <init>
+	 * >	HUX.addModule( HUX.hello );
 	 * 
+	 * Example of use #2 :
+	 * >	HUX.addLiveListener(function(context){
+	 * >		alert('hello world');
+	 * > 	});
 	 */
-	addLiveListener: function(mod){
-		if( mod.listen === undefined )
+	addLiveListener: function(arg1, thisObject){
+		var listen = typeof arg1 === "object"? arg1.listen : arg1;
+		if( listen === undefined )
 			throw new TypeException("The module does not implement the following method : listen(context)");
-		mod.listen(document, document);
+		listen.call(thisObject || this, document, document);
 		HUX.HUXEvents.bindGlobal("beforeInject", function(event){
-			HUX.Compat.forEach(event.children, function(child){
-				if(child.nodeType === 1)  // is child an Element ?
-					mod.listen(child, event.target); 
-			});
+			try{
+				listen.call(thisObject || this, event.content, event.target);
+			}
+			catch(ex){
+				HUX.logError(ex);
+			}
 		});
 	},
 	/**
@@ -217,15 +182,18 @@ var HUX = {
 	 * 	- {Array} the array without the element
 	 */
 	removeElement: function(array, el){
-		var index = array.indexOf(el);
-		if(index < 0)
-			throw new Error("the element is not present in the array");
-		var rest = array.slice(index + 1);
-		// recursion. We remove all "el"
-		if(rest.indexOf(el) >=0)
-			HUX.removeElement.removeElement(el);
-		array.length = index;
-		return array.push.apply(array, rest);
+		var index = HUX.Compat.indexOf(array, el), rest;
+		if(index >= 0)
+		{
+			// el is removed : all before is stored in array, the rest in rest
+			rest = array.splice(index).splice(1);
+			// recursion. We remove all "el"
+			HUX.removeElement(rest, el);
+			// we concat the rest with the array
+			return array.concat(rest);
+		}
+		else
+			return array;
 	},
 	
 	
@@ -328,7 +296,9 @@ var HUX = {
 				throw new Error("the event "+evName+" does not exist for HUX");
 		};
 		var removeListener = function(key, evName, fn){
-			HUX.removeElement(arrEv[evName][key], fn);
+			var array = arrEv[evName][key];
+			if(array !== undefined)
+				HUX.removeElement(array, fn);
 		};
 		// get the listeners of an event safely
 		var getListeners = function(evName, tid){ 
@@ -365,7 +335,7 @@ var HUX = {
 		 * 	- *evName*: {String} the event Name
 		 * 	- *fn*: {Function} the event listener to remove
 		 */
-		pub.unbindGlobal = function(evName, fn){// public
+		pub.unbindGlobal = function(evName, fn){
 			return removeListener("global", evName, fn);
 		};
 		
@@ -374,26 +344,24 @@ var HUX = {
 		 * sort of addEventListener
 		 * 
 		 * Parameters: 
-		 *	- *target* : {Element} the target of the event. Can be a 
+		 *	- *target* : {String} the target ID
 		 * 	- *evName* : {String} the name of the event
 		 * 	- *fn* : {Function} the listener
 		 */
-		pub.bind = function(target, evName, fn){// public
-			checktid("HUXEvents.bind", target);
-			return addListener(target.id, evName, fn);
+		pub.bind = function(target, evName, fn){
+			return addListener(target, evName, fn);
 		};
 		/**
 		 * Function: unbind
 		 * sort of removeEventListener
 		 * 
 		 * Parameters: 
-		 *	- *target* : {Element} the target of the event. Can be a 
+		 *	- *target* : {String} the target ID
 		 * 	- *evName* : {String} the name of the event
 		 * 	- *fn* : {Function} the listener to remove
 		 */
-		pub.unbind = function(target, evName, fn){// public
-			checktid("HUXEvents.unbind", target);
-			return removeListener(target.id, evName, fn);
+		pub.unbind = function(target, evName, fn){
+			return removeListener(target, evName, fn);
 		};
 		/**
 		 * Function: trigger
@@ -404,7 +372,7 @@ var HUX = {
 		 * 	- *event* : {HUX Event Object} object with information about the event 
 		 * NOTE : if the event has a target, put it as event.target
 		 */
-		pub.trigger = function(evName, event, callback){// public
+		pub.trigger = function(evName, event, callback){
 			try{
 				var lsters = [], tid = (event.target?event.target.id : null), arrEv = arrEv;
 				// we merge the listeners for the specific element and the listeners for "global"
@@ -443,7 +411,7 @@ var HUX = {
 		 * Returns:
 		 * 	- {Boolean} true if the event type has been created successfully
 		 */
-		pub.createEventType = function(evName){// public
+		pub.createEventType = function(evName){
 			// if arrEv is not undefined nor null
 			if( arrEv[evName] )
 				return false; // we do not create the same event type twice
@@ -466,8 +434,7 @@ var HUX = {
 			if(!target)
 				throw new Error(methodName+" filling method requires a target element");
 		},
-	 	
-		fillingMethods = {
+		    fillingMethods = {
 			prepend: function(content, target){
 				var aInserted;
 				checkTarget( target, "prepend");
@@ -536,10 +503,8 @@ var HUX = {
 			while(nodes.length > 0){
 				var node = nodes[0];
 				frag.appendChild( node);
-				pub.pauseMedias( node )
-				
+				pub.pauseMedias( node );
 			}
-			delete nodes;
 			return frag;
 		};
 		/**
@@ -590,6 +555,7 @@ var HUX = {
 		 * Returns:
 		 * 	- {DocumentFragment} the DocumentFragment converted (or *node* as is if it was already a DocumentFragment)
 		 */
+		// NOTE : usefull ?
 		pub.forceDocumentFragment = function(doc){
 			var ret = doc, content;
 			if(doc.nodeType === document.DOCUMENT_NODE){
@@ -619,7 +585,6 @@ var HUX = {
 			}*/
 			while( (child=parent.firstChild) !== null ){
 				parent.removeChild(child);
-				delete child;
 			}
 			
 		};
@@ -662,6 +627,7 @@ var HUX = {
 		pub.htmltodom = function(sHtml, context){
 			
 			var ret;
+			// required by range.selectNodeContents, which is required by Chrome
 			if(context === undefined || ! context.nodeType)
 				throw "htmltodom : context is required and must be a node";
 			
@@ -671,7 +637,7 @@ var HUX = {
 				ret = range.createContextualFragment(sHtml);
 			}
 			else{ // IE ...
-				var parent = context ? context.cloneNode(false) : document.createElement('div');
+				var parent = ( context !== undefined? context.cloneNode(false) : 						document.createElement('div') );
 				try{
 					parent.innerHTML = sHtml;
 				}
@@ -718,14 +684,12 @@ var HUX = {
 					arrContents.push( HUX.importNode(c) );
 				});
 				DOMContent = this.Inject.injectIntoDocFrag( arrContents );
-				delete arrContents;
 			}
 			else
 				DOMContent = this.Inject.injectIntoDocFrag( [ HUX.importNode(content) ] ); // we create a single imported element Array
 		}
 		else if(content.length !== undefined && typeof content !== "string"){ // if the content is enumerable and is not a node
 			DOMContent = this.Inject.injectIntoDocFrag( content );
-			delete content;
 		}
 		else if(typeof content !== "string")
 			throw new TypeError("content : invalid argument");
@@ -733,7 +697,7 @@ var HUX = {
 			method = "replace";
 		
 		
-		HUX.HUXEvents.trigger("beforeInject", {target: target, children: DOMContent.childNodes}, function(){
+		HUX.HUXEvents.trigger("beforeInject", {target: target, children: DOMContent.childNodes, content: DOMContent}, function(){
 			var aInserted = [];
 			try{
 				aInserted = HUX.Inject.proceed(target, method, DOMContent); 
@@ -767,7 +731,10 @@ var HUX = {
 			"$=": function(found, expected){
 				return found.lastIndexOf(expected) === found.length - expected.length;
 			},
-			undefined: function() { return true;} // if no value expected, return true in all case
+			"~=": function(found, expected){
+				return new RegExp("(^|\\s)"+expected+"(\\s|$)").test(found);
+			},
+			"": function() { return true;} // if no value expected, return true in all case
 		};
 		
 		/**
@@ -777,7 +744,7 @@ var HUX = {
 		var pub = {};
 		
 		pub.splitAttrSel = function(attrSel){
-			var resMatch = attrSel.match(/([^\^$*=]+)(=|\$=|\^=|\*=)?['"]?([^'"]*)['"]?/);
+			var resMatch = attrSel.match(/([^\^$*~=]+)([\^$*~]?=)?['"]?([^'"]*)['"]?/);
 			return {
 				attrName: resMatch[1],
 				op: resMatch[2],
@@ -807,14 +774,15 @@ var HUX = {
 				return HUX.toArray(result);
 			}
 			else{ // fallback (mostly for IE 7-)
-				var resSplitAttrSel = pub.splitAttrSel(attrSel);
-				    fnMatch = oFnMatchAttrValIE[ resSplitAttrSel.op ],
+				var resSplitAttrSel = pub.splitAttrSel(attrSel),
+				    fnMatch = oFnMatchAttrValIE[ resSplitAttrSel.op || "" ],
 				    attrName = resSplitAttrSel.attrName, 
-				    expectedVal = resSplitAttrSel.attrVal;
+				    expectedVal = resSplitAttrSel.attrVal,
 				    fnFilter = function(el){ 
 					var foundVal = el.getAttribute(attrName);
 					return (!!foundVal) && fnMatch(foundVal, expectedVal); // NOTE: IE7 returns "" if the attribute does not exist
 				    }; 
+				
 				return pub.filterIE(tagName, fnFilter, context, fnEach);
 			}
 		};
@@ -827,7 +795,7 @@ var HUX = {
 		 * 	- *tagName*: {String} the tagName of the element you look for
 		 * 	- *attrSel*: {String} the attribute selector (supported : "att", "att=val", "att^=val, "att*=val", "att$=val"). See CSS3 attribute selectors
 		 * 	- *context*: {Element} the element in which one will search (optional)
-		 * 	- *fnEach*: {Function} thefunction executed for each result (optional)
+		 * 	- *fnEach*: {Function} the function executed for each result (optional)
 		 * 
 		 * Returns:
 		 * 	- {Array of Elements} the elements found
@@ -835,6 +803,49 @@ var HUX = {
 		pub.byAttributeHUX = function(tagName, attrSel, context, fnEach){
 			var prefixedAttrSel = HUX.HUXattr.getAttrPrefix(attrSel);
 			return pub.byAttribute(tagName, prefixedAttrSel, context, fnEach);
+		};
+		/**
+		 * Function: byClassName
+		 * selects elements by their class name
+		 * 
+		 * Parameters:
+		 * 	- *className*: {String} the className
+		 * 	- *context*: {Element} the element in which one will search (optional)
+		 * 	- *fnEach*: {Function} the function executed for each result (optional)
+		 */
+		pub.byClassName = function(className, context, fnEach){
+			var ret;
+			context = context || document;
+			if(context.querySelectorAll !== undefined)
+			{
+				ret = HUX.toArray( context.querySelectorAll('.'+className) );
+				if(fnEach !== undefined)
+					HUX.Compat.forEach( ret, fnEach );
+			}
+			else{
+				var msieVersion = HUX.Browser.getMSIEVersion(), attrName;
+				// IE 7- has a weird behaviour : to get the class attribute, you must use el.getAttribute("classname")
+				// so, we detect IE 7-, and fix it. See : http://thicksliced.blogspot.fr/2006/12/elementgetattributeclass.html
+				attrName = (msieVersion && msieVersion < 8 ? "classname" : "class");
+				ret = pub.byAttribute("*", attrName+"~='"+className+"'", context, fnEach);
+			}
+			return ret;
+		};
+		/**
+		 * Function: byId
+		 * selects an element by its ID
+		 * usefull to do treatments before the injection
+		 * 
+		 * Parameters:
+		 * 	- *id*: {String} the ID
+		 * 	- *context*: {Element} the element in which one will search (optional)
+		 */
+		pub.byId = function(id, context){
+			context = context || document;
+			if(context.querySelector)
+				return context.querySelector("#"+id);
+			else
+				return pub.byAttribute("*", "id='"+id+"'", context)[0];
 		};
 		
 		
@@ -862,7 +873,8 @@ var HUX = {
 			var ret = [], elts;
 			context = context || document;
 			fnEach = fnEach || function(){};
-			elts = context.getElementsByTagName(tagName);
+			// NOTE : we clone the array, because elts would be updated otherwise, behaviour that we do not want
+			elts = HUX.toArray(context.getElementsByTagName(tagName));
 			// for each element found above
 			HUX.Compat.forEach(elts, function(el){
 				// we test the Filter function given
@@ -880,8 +892,9 @@ var HUX = {
 	 * Prefer use directly <HUX.xhr> instead
 	 */
 	XHR: (function(){
-		/** =================== PRIVATE ================== **/ 
-		var setReadystatechange = function(xhr, filling, target, opt){
+		/** =================== INNER ================== **/ 
+		var inner = {};
+		inner.setReadystatechange = function(xhr, filling, target, opt){
 			try{
 				var onSuccess = opt.onSuccess || pub.onSuccess,
 				    onError = opt.onError || pub.onError;
@@ -904,26 +917,29 @@ var HUX = {
 			catch(ex){
 				HUX.logError(ex);
 			}
-		},
+		};
 		// taken from jQuery, returns an XMLHttpRequest object
-		getXhrObject = function(){
+		inner.getXhrObject = function(){
 			return window.ActiveXObject ? new ActiveXObject("Microsoft.XMLHTTP") : new XMLHttpRequest();
 		};
+		inner.getDefaultErrorMessage = function(xhr){
+			return "<h1>"+xhr.status+" : "+xhr.statusText+"</h1>";
+		}
+		inner.errorTarget = "opt.target not defined or null";
 		
 		
 		
 		/** =================== PUBLIC ================== **/ 
-		var pub = {};
+		var pub = {inner:inner};
 		// see HUX.xhr(opt)
 		pub.proceed = function(opt){
 			if(! opt.url ) // opt.url === undefined || opt.url === null || opt.url === ""
 				throw new TypeError("invalid argument : opt.url");
-			if(! opt.target)
-				throw new TypeError("invalid argument : opt.target");
+			
 			if(typeof opt.target === "string"){ // if opt.target is an id string, get the matching element 
 				var target = document.getElementById( opt.target );
 				if(! target) // === undefined or === null
-					throw "#"+opt.target+" not found";
+					throw "HUX.xhr: target of id '"+opt.target+"' not found";
 				else
 					opt.target = target;
 			}
@@ -931,12 +947,13 @@ var HUX = {
 			try{
 				var data = null, xhr;
 				// mainly for stageclassmgr
-				HUX.HUXEvents.trigger("prepareLoading", {target: (opt.target || document.body) });
+				if(opt.target) // ! (undefined or null)
+					HUX.HUXEvents.trigger("prepareLoading", {target: opt.target });
 				// default value for opt.async is true
 				if(opt.async === undefined)
 					opt.async = true;
 				// we get the XHR Object
-				xhr = getXhrObject();
+				xhr = inner.getXhrObject();
 				
 				// we add GET parameters to the URL. If there are some already, we add a "&"+opt.data to the string. Otherwise, we add "?"+opt.data
 				if(opt.method.toLowerCase() === "get" && opt.data)
@@ -949,7 +966,7 @@ var HUX = {
 				else
 					xhr.open(opt.method, opt.url, opt.async);
 				// 
-				setReadystatechange(xhr, opt.filling, opt.target, opt);
+				inner.setReadystatechange(xhr, opt.filling, opt.target, opt);
 				xhr.setRequestHeader("Content-Type", opt.contentType || "application/x-www-form-urlencoded");
 				// if the user set requestHeaders
 				if(opt.requestHeaders ){
@@ -958,7 +975,8 @@ var HUX = {
 				}
 					
 				// we trigger the event "loading"
-				HUX.HUXEvents.trigger("loading", {target: (opt.target || document.body) });
+				if(opt.target) // ! (undefined or null)
+					HUX.HUXEvents.trigger("loading", {target: opt.target });
 				xhr.send(data);
 				return xhr;
 			}
@@ -966,12 +984,32 @@ var HUX = {
 				HUX.logError(ex); // 
 			}
 		};
-		
+		/**
+		 * Function; getContentOnSuccess
+		 * returns the result of the XHR request on success 
+		 * 
+		 * PARAMETERS: 
+		 * 	- *xhr*: the XHR object
+		 * 
+		 * RETURNS:
+		 * 	- {String, XML Document or HTML Document} the result that HUX.inject can treat
+		 */
+		pub.getResultOnSuccess = function(xhr){
+			return (xhr.responseXML && xhr.responseXML.documentElement)? 
+				xhr.responseXML : 
+				xhr.responseText;
+		};
 		pub.onSuccess = function(xhr, filling, target){
-			HUX.inject(target, filling, (xhr.responseXML && xhr.responseXML.documentElement)? xhr.responseXML : xhr.responseText);
+			if( target )
+				HUX.inject(target, filling, pub.getResultOnSuccess(xhr));
+			else
+				HUX.logError( inner.errorTarget );
 		};
 		pub.onError = function(xhr, filling, target){
-			HUX.inject(target, null, "<h1>"+xhr.status+" : "+xhr.statusText+"</h1>");
+			if( target )
+				HUX.inject(target, null, inner.getDefaultErrorMessage(xhr));
+			else
+				HUX.logError( inner.errorTarget );
 		};
 		return pub;
 	})(),
@@ -1220,8 +1258,10 @@ var HUX = {
 		pub.forEach = Array.forEach || function(array, fn, t){
 			if(Array.prototype.forEach !== undefined )
 				Array.prototype.forEach.call(array, fn, t);
-			for(var i = 0; i < array.length; i++)
-				fn.call(t||this, array[i], i, array);
+			else {
+				for(var i = 0; i < array.length; i++)
+					fn.call(t||this, array[i], i, array);
+			}
 		};
 		
 		pub.indexOf = Array.indexOf || function(array, obj){
@@ -1265,22 +1305,14 @@ var HUX = {
 			return /MSIE [0-8]/.test(navigator.userAgent);
 		};*/
 		pub.getMSIEVersion = function(){
-			return (navigator.userAgent.match(/MSIE ([0-9]+)/) || [null, null])[1];
+			return document.documentMode || 
+				( (navigator.userAgent.match(/MSIE ([0-9]+)/) || [null, null])[1] );
 		}
 		return pub;
 	})()
 };
 
 HUX.addModule( HUX );
-
-// register some functions in the HUX API
-HUX.addToAPI({
-	Compat: HUX.Compat, 
-	HUXEvents: HUX.HUXEvents,
-	Selector: HUX.Selector,
-	inject: HUX.inject,
-	xhr: HUX.xhr
-});
 
 
 
@@ -1315,65 +1347,62 @@ HUX.addToAPI({
  * Namespace: HUX.SimpleLoader
  * Loads content without URL update
  */
-HUX.SimpleLoader = {
-	sTarget:"target",
-	/**
-	 * Function: onClick
-	 * handler for Click Event
-	 */
-	onclick: function(ev){
-		try{
-			var srcElement = HUX.Compat.getEventTarget(ev) ;
-			var opt = {
-				data:null,
-				url:srcElement.href,
-				method:'get',
-				async:true,
-				filling:HUX.HUXattr.getFillingMethod(srcElement),
-				target:HUX.HUXattr.getTarget(srcElement)
-			};
-			HUX.xhr(opt);
-			HUX.Compat.preventDefault(ev);
+HUX.SimpleLoader = (function(){
+	var inner = {
+		sTarget:"target",
+		/**
+		* Function: onClick
+		* handler for Click Event
+		*/
+		onclick: function(ev){
+			try{
+				var srcElement = HUX.Compat.getEventTarget(ev) ;
+				var opt = {
+					data:null,
+					url:srcElement.href,
+					method:'get',
+					async:true,
+					filling:HUX.HUXattr.getFillingMethod(srcElement),
+					target:HUX.HUXattr.getTarget(srcElement)
+				};
+				HUX.xhr(opt);
+				HUX.Compat.preventDefault(ev);
+			}
+			catch(ex){
+				HUX.logError(ex);
+			}
+		},
+		fnEach: function(el){
+			HUX.Compat.addEventListener(el, "click", inner.onclick );
 		}
-		catch(ex){
-			HUX.logError(ex);
+	};
+	var pub = {
+		inner: inner,
+		/**
+		* Function: listen
+		* binds "click" event to inner.onClick function for each anchors having target attribute
+		* 
+		* Parameters : 
+		* 	- *context* : {Element} the context where we listen for events
+		*/
+		listen:function(context){
+			// for all anchor elements having target attributes, we listen to "click" events
+			HUX.Selector.byAttributeHUX("a", inner.sTarget, context, inner.fnEach);
+		},
+		/**
+		* Function: init
+		* inits the module. Calls addLiveListener
+		*/
+		init: function(){
+			HUX.addLiveListener(pub.listen);
 		}
-	},
-	fnEach: function(el){
-		HUX.Compat.addEventListener(el, "click", HUX.SimpleLoader.onclick );
-	},
-	/**
-	 * Function: listen
-	 * binds "click" event to HUX.SimpleLoader.onClick function for each anchors having target attribute
-	 * 
-	 * Parameters : 
-	 * 	- *context* : {Element} the context where we listen for events
-	 */
-	listen:function(context){
-		// for all anchor elements having target attributes, we listen to "click" events
-		HUX.Selector.byAttributeHUX("a", this.sTarget, context, this.fnEach);
-	},
-	/**
-	 * Function: init
-	 * inits the module. Calls addLiveListener
-	 */
-	init: function(){
-		HUX.addLiveListener(this);
-	}
-};
+	};
+	return pub;
+})();
 
 HUX.addModule(HUX.SimpleLoader); 
 
-HUX.addToAPI({"simpleload" : function(target, url, filling /* optional */){
-	HUX.xhr({
-		data:null,
-		url:url,
-		target:target,
-		filling: filling,
-		method: 'get',
-		async:true
-	});
-}});
+
 
 /**
     HTTP Using XML (HUX) : SplitArray Class
@@ -1411,7 +1440,6 @@ HUX.PairManager = function(callbacks){
 		this.getLength = function(){ return pairs.length; };
 		// sets the value at the specified index
 		this.set = function(index, value){
-			
 			return pairs[index] = value;
 		};
 		this.get = function(index){ return pairs[index] };
@@ -1492,13 +1520,23 @@ HUX.PairManager = function(callbacks){
 		return {target:pair[0], url:pair[1]};
 	};
 	this.change = function(sPairs){
-		var reModif = /^!?[+-]/, isModif = reModif.test( sPairs[0] ); // isModif === true if the first character of the first pair equals to '+' or '-'
+		var reModif = /^!?[+-]/, isModif = reModif.test( sPairs[0] ), // isModif === true if the first character of the first pair equals to '+' or '-'
+		    op, lastop ; // lastop : the last operator
 		
 		if(isModif) {
 			for(var i = 0; i < sPairs.length; i++){
 				
-				var sPair = sPairs[i], bangOffset = (sPair.charAt(0)==='!'?1:0), op = sPair.charAt(bangOffset), pair, sTarget;
-				sPair = sPair.slice(bangOffset+ 1); // we remove '+' or '-' from sPair
+				var sPair = sPairs[i], bangOffset = (sPair.charAt(0)==='!'?1:0), pair, sTarget;
+				op = sPair.charAt(bangOffset);
+				//
+				if(! /[+-]/.test(op) ){
+					op = lastop;
+				}
+				else{
+					sPair = sPair.slice(bangOffset+ 1); // we remove '+' or '-' from sPair
+				}
+				lastop = op;
+				
 				if(op === '-'){
 					this.removePair(sPair);
 				}
@@ -1567,6 +1605,10 @@ HUX.PairManager = function(callbacks){
 		}
 		return {index: index, ok: ok};
 	};
+	this.getPairValue = function(target){
+		var index = this.indexOf(target);
+		return index >= 0 ? this.get(index).url : null;
+	};
 	/**
 	 * Function: removePair
 	 * remove a pair with the specified target
@@ -1626,7 +1668,36 @@ HUX.PairManager.split = function(str, pattern, callbacks){
 	}
 	return pm;
 };
-/**
+HUX.ContentSynchronizer = function(method){
+	// if method is null, this class will behave as if it were "replace"
+	// the waiting contents : 
+	var contents = {};
+	// the keys in the order as displayed in the URL
+	var keys = [];
+	this.addContent = function(pairKey, content){
+		var iPairKey, target = document.getElementById(pairKey);
+		
+		if(target === null){
+			contents[pairKey] = content;
+		}
+		else{
+			iPairKey = HUX.Compat.indexOf(keys, pairKey);
+			HUX.inject( target, method, content );
+			for(var i = iPairKey; i < keys.length; i++){
+				var curKey = keys[i], curContent = contents[ curKey ],
+					curTarget = document.getElementById(curKey);
+				if( curContent !== undefined && curTarget !== null ){
+					HUX.inject( curTarget, method, curContent );
+					delete contents[ curKey ] ;
+				}
+			}
+		}
+	};
+	this.setKeys = function(_keys){
+		keys = _keys;
+		contents = {};
+	};
+};/**
     HTTP Using XML (HUX) : Hash Manager
     Copyright (C) 2011  Florent FAYOLLE
     
@@ -1655,309 +1726,229 @@ HUX.PairManager.split = function(str, pattern, callbacks){
  * Namespace: HUX.HashMgr
  * Manages Hash for HUX
  */
-HUX.HashMgr = {
+HUX.HashMgr = (function(){
 	// =============================
-	// PRIVATE PROPERTIES
+	// INNER FUNCTIONS AND PROPERTIES
 	// =============================
-	
-	/**
-	 * PrivateProperty: __pairs
-	 * {HashMap<String, String>} Split object of the current Hash. Matches each id with the URL of the content loaded.
-	 */
-	__pairs:null,
-	// the previous hash (private)
-	__prev_hash:location.hash,
-	// counter for exceptions
-	__watcher_cpt_ex:0,
-	
-	// store the content by default (before having injected content with HUX)
-	__default_contents:{},
-	
-
-	
-	// =============================
-	// PUBLIC PROPERTIES
-	// =============================
-	
-	/**
-	 * Property: asyncReq
-	 * {boolean} true if the requests have to be asynchronous, false otherwise (default: false)
-	 */
-	asyncReq: false,
-	// does the browser support [on]hashchange event ?
-	hashchangeEnabled: null,
-	/**
-	 * Property: inTreatment
-	 * sort of mutex for event handlers
-	 */
-	inTreatment: false, 
-	
-	// limit of exceptions before stopping
-	watcher_cpt_limit:10,
-	/**
-	 * Property: timer
-	 * {Integer} Timer for browsers which do not support hashchange event. Used in <__watch>.
-	 */
-	timer:100,
-	
-	pairsCallbacks:{
-		onAdd: function(added){
-			var sTarget = added.target, target = document.getElementById(sTarget), self= HUX.HashMgr;
-			if(target !== null){
-				self.__default_contents[sTarget] = target.innerHTML;
-				self.load(target, added.url);
-				return true;
-			}
-			else{
-				return false;
-			}
-		},
-		onReplace: function(added){
-			var target = document.getElementById(added.target), self= HUX.HashMgr;
-			if(target !== null){
-				self.load(target, added.url);
-				return true;
-			}
-			else
-				return false;
-			},
-		onDelete: function(deleted){
-			var sTarget = deleted.target, self= HUX.HashMgr, replacement = self.__default_contents[sTarget];
-			if(replacement !== undefined){
-				var target = document.getElementById(sTarget);
-				if(target !== null){
-					HUX.HUXEvents.trigger("loading", {target: target });
-					HUX.inject(target, "replace", replacement);
-					return true;
-				}
-			}
-			return false;
-		}
+	var inner = {
+		msieVersion:HUX.Browser.getMSIEVersion(),
+		// =============================
+		// PRIVATE PROPERTIES
+		// =============================
 		
-	},
-	
-	
-	// =============================
-	// PRIVATE FUNCTIONS
-	// =============================
-	
-	
-	/**
-	 * PrivateFunction: __watch
-	 * watcher for browsers which don't implement [on]hashchange event
-	 */
-	__watch: function(){
-		try{
-			HUX.HashMgr.handleIfChangement();
-		}
-		catch(ex){
-			HUX.logError(ex);
-			HUX.HashMgr.__watcher_cpt_ex++;
-			throw ex;
-		}
-		finally{
-			if(HUX.HashMgr.__watcher_cpt_ex < HUX.HashMgr.watcher_cpt_limit)
-				window.setTimeout(HUX.HashMgr.__watch, HUX.HashMgr.timer);
-		}
-	},
-	
-	
-	
-	
-	
-	// =============================
-	// PUBLIC FUNCTIONS
-	// =============================
-	
-	
-	/**
-	 * Function: init
-	 * inits the module. 
-	 */
-	init:function(){
-		this.__pairs = new HUX.PairManager(this.pairsCallbacks);
-		this.hashchangeEnabled = ( "onhashchange" in window) && (! document.documentMode || document.documentMode >= 8);
-		// if the IFrameHack is needed, we create immediatly the iframe 
-		if(this.IFrameHack.enabled)
-			this.IFrameHack.createIFrame();
-		// initiate the listener to hash changement
-		if( this.hashchangeEnabled )
-			HUX.Compat.addEventListener(window, "hashchange", HUX.HashMgr.handleIfChangement);
-		else // if hashchange event is not supported
-			this.__watch();
-		// we listen to any anchor beginning with "#!" (corresponding to CCS3 Selector : a[href^="#!"])
-		HUX.addLiveListener(HUX.HashMgr);
-		// we treat location.hash
-		HUX.HashMgr.changeHash(null, true);
-		HUX.HUXEvents.createEventType("afterHashChanged");
-	},
-	/**
-	 * Function: listen
-	 * Binds all anchor elements having an href beginning with "#!"
-	 * 
-	 * Parameters:
-	 * 	- *context*: {Element} the context where we listen for events
-	 */
-	listen: function(context){
-		var fnFilter, prefixedTN, fnEach;
-		fnEach = function(el){
-			HUX.Compat.addEventListenerOnce(el, "click", HUX.HashMgr.onClick);
-		};
-		// we look for anchors whose href begins with "#!" 
-		// so anchors with hash operations ("#!+", "#!-") can be treated before location.hash is changed
-		HUX.HashMgr.findAnchors(context, fnEach);
-	},
-	/**
-	 * Function: findAnchors
-	 * gets the anchors with hashbangs within a context node
-	 * 
-	 * Parameters:
-	 * 	- *context*: {Element} the context node
-	 * 	- *fnEach*: {Function} the function to execute for each found element
-	 * 
-	 * Returns:
-	 * 	- {Array of Elements} the found elements
-	 */
-	findAnchors: function(context, fnEach){
-		var msieVers = HUX.Browser.getMSIEVersion();
-		if(msieVers && msieVers <= 7){
-			fnFilter = function(el){  
-				// NOTE : el.getAttribute("href", 2) does not always work with IE 7, so we use this workaround to 
-				// test if the href attribute begins with "#!"
-				return el.href.indexOf( location.href.replace(/#(.*)/, "")+"#!" ) === 0;  
-			};
-			HUX.Selector.filterIE("a", fnFilter, context, fnEach);
-		}
-		else{
-			HUX.Selector.byAttribute("a", "href^='!#'", context, fnEach);
-		}
-	},
-	/*
-	 * Function: handleIfChangement
-	 * handles the hash changement
-	 * 
-	 * Parameters:
-	 * 	- *ev*: {DOM Event}
-	 */
-	handleIfChangement: function(ev){
-		//info.push("enter");
-		var hash = location.hash;
-		if(hash !== HUX.HashMgr.__prev_hash && !HUX.HashMgr.inTreatment){
-			//info.push("diff");
+		/**
+		 * PrivateProperty: pairs
+		 * {HashMap<String, String>} Split object of the current Hash. Matches each id with the URL of the content loaded.
+		 */
+		pairs:null,
+		// the previous hash (private)
+		prev_hash:location.hash,
+		// counter for exceptions
+		watcher_cpt_ex:0,
+		
+		// store the content by default (before having injected content with HUX)
+		default_contents:{},
+		
+		// does the browser support [on]hashchange event ?
+		hashchangeEnabled: null,
+		/**
+		 * Property: inTreatment
+		 * sort of mutex for event handlers
+		 */
+		inTreatment: false, 
+	       
+		contentSynchronizer: null,
+		
+		// limit of exceptions before stopping
+		watcher_cpt_limit:10,
+	       	/**
+		 * Property: timer
+		 * {Integer} Timer for browsers which do not support hashchange event. Used in <inner.watch>.
+		 */
+		timer:100,
+		pairsCallbacks:{
+			onAdd: function(added){
+				// we make sure we call inner.saveDefaultContent only once : 
+				HUX.HUXEvents.unbind(added.target, "beforeInject", inner.saveDefaultContent);
+				// we listen to "beforeInject" se we save the default content : 
+				HUX.HUXEvents.bind(added.target, "beforeInject", inner.saveDefaultContent);
+				// then we load the content asynchronously
+				inner.load(added.target, added.url);
+				return true;
+			},
+			onReplace: function(added){
+				inner.load(added.target, added.url);
+				return true;
+			},
+			onDelete: function(deleted){
+				var sTarget = deleted.target, self= HUX.HashMgr, replacement = inner.default_contents[sTarget];
+				if(replacement !== undefined){
+					var target = document.getElementById(sTarget);
+					if(target !== null){
+						HUX.HUXEvents.trigger("loading", {target: target });
+						HUX.inject(target, "replace", replacement);
+						return true;
+					}
+				}
+				return false;
+			}
+			
+		},
+		/**
+		 * PrivateFunction: watch
+		 * watcher for browsers which don't implement [on]hashchange event
+		 */
+		watch: function(){
 			try{
-				HUX.HashMgr.inTreatment = true;
-				HUX.HashMgr.changeHash(hash);
+				inner.handleIfChangement();
 			}
 			catch(ex){
 				HUX.logError(ex);
+				inner.watcher_cpt_ex++;
+				throw ex;
 			}
 			finally{
-				HUX.HashMgr.__prev_hash = hash; // even if there is an exeception, we ensure that __prev_hash is changed
-				HUX.HashMgr.inTreatment = false;
-				HUX.HUXEvents.trigger("afterHashChanged", {"new_hash":HUX.HashMgr.__prev_hash});
+				if(inner.watcher_cpt_ex < inner.watcher_cpt_limit)
+					window.setTimeout(inner.watch, inner.timer);
 			}
+		},
+	       	/**
+		 * Function: findAnchors
+		 * gets the anchors with hashbangs within a context node
+		 * 
+		 * Parameters:
+		 * 	- *context*: {Element} the context node
+		 * 	- *fnEach*: {Function} the function to execute for each found element
+		 * 
+		 * Returns:
+		 * 	- {Array of Elements} the found elements
+		 */
+		findAnchors: function(context, fnEach){
+			if(this.__msieVers && this.__msieVers <= 7){
+				fnFilter = function(el){  
+					// NOTE : el.getAttribute("href", 2) does not always work with IE 7, so we use this workaround to 
+					// test if the href attribute begins with "#!"
+					return el.href.indexOf( location.href.replace(/#(.*)/, "")+"#!" ) === 0;  
+				};
+				HUX.Selector.filterIE("a", fnFilter, context, fnEach);
+			}
+			else{
+				HUX.Selector.byAttribute("a", "href^='!#'", context, fnEach);
+			}
+		},
+	       	       	/*
+		 * Function: handleIfChangement
+		 * handles the hash changement
+		 * 
+		 * Parameters:
+		 * 	- *ev*: {DOM Event}
+		 */
+		handleIfChangement: function(ev){
+			//info.push("enter");
+			var hash = location.hash;
+			if(hash !== inner.prev_hash && !inner.inTreatment){
+				//info.push("diff");
+				try{
+					inner.inTreatment = true;
+					pub.changeHash(hash);
+				}
+				catch(ex){
+					HUX.logError(ex);
+				}
+				finally{
+					inner.prev_hash = hash; // even if there is an exeception, we ensure that inner.prev_hash is changed
+					inner.inTreatment = false;
+					HUX.HUXEvents.trigger("afterHashChanged", {"new_hash":inner.prev_hash});
+				}
+			}
+		},
+		saveDefaultContent: function(ev){
+			inner.default_contents[ev.target.id] = ev.target.innerHTML;
+			// we unbind since we want it to vbe executed only once
+			HUX.HUXEvents.unbind(ev.target.id, "beforeInject", inner.saveDefaultContent);
+		},
+		/**
+		 * Function: load
+		 * loads the content (specified through its URL) to the target element.
+		 * 
+		 * Parameters:
+		 * 	- *target*: {Element} the target element in which we will load the remote content
+		 * 	- *url*: {String} the URL of the remote content
+		 */
+		load: function(target, url){
+			var opt = {
+				data:null,
+				url:url,
+				method:'get',
+				async:pub.asyncReq,
+				filling:null, // use default option (replace)
+				target:document.getElementById(target)
+			};
+			opt.onSuccess = function(xhr){
+				// NOTE : cf "return false" dans callbacks
+				inner.contentSynchronizer.addContent(target, (xhr.responseXML && xhr.responseXML.documentElement)? 
+					xhr.responseXML : 
+					xhr.responseText );
+			};
+			opt.onError = function(xhr){
+				inner.contentSynchronizer.addContent(target, HUX.XHR.inner.getDefaultErrorMessage(xhr));
+			};
+			HUX.xhr(opt);
+		},
+	       	/**
+		 * Funtion: onClick
+		 * handles click event on anchors having href="#!...". 
+		 * directly treat the hash changement
+		 * 
+		 * Parameters:
+		 * 	- *ev* : {DOM Event}
+		 */
+		onClick:function(ev){
+			var srcElement = HUX.Compat.getEventTarget(ev), 
+			hash = ( srcElement.hash || srcElement.getAttribute("href") );
+			//location.hash += ( srcElement.hash || srcElement.getAttribute("href") ).replace(/^#/,",");
+			pub.changeHash(hash);
+			HUX.Compat.preventDefault(ev);
+		},
+	       		
+		/**
+		 * Function: updateHash
+		 * updates the hash
+		 * 
+		 * Parameters:
+		 * 	- *hash*: {String} the new hash to set 
+		 * 	- *keepPrevHash*: {Boolean} true if we do not change the current hash (optional; default: false)
+		 */
+		updateHash: function(hash/*, keepPrevHash*/){
+			if( hash.replace(/^#/, "") !== location.hash.replace(/^#/, "") ){
+				inner.prev_hash = hash; // necessary in order to prevent another execution of changeHash via handleIfChangement
+				location.hash = hash;
+			}
+			
 		}
-	},
-
-	/**
-	 * Function: load
-	 * loads the content (specified through its URL) to the target element.
-	 * 
-	 * Parameters:
-	 * 	- *target*: {Element} the target element in which we will load the remote content
-	 * 	- *url*: {String} the URL of the remote content
-	 */
-	load: function(target, url){
-		var opt = {
-			data:null,
-			url:url,
-			method:'get',
-			async:this.asyncReq,
-			filling:null, // use default option (replace)
-			target:target
-		};
-		HUX.xhr(opt);
-	},
-	/**
-	 * Funtion: onClick
-	 * handles click event on anchors having href="#!...". 
-	 * directly treat the hash changement
-	 * 
-	 * Parameters:
-	 * 	- *ev* : {DOM Event}
-	 */
-	onClick:function(ev){
-		var srcElement = HUX.Compat.getEventTarget(ev), 
-		    hash = ( srcElement.hash || srcElement.getAttribute("href") ),
-		    hm = HUX.HashMgr;
-		//location.hash += ( srcElement.hash || srcElement.getAttribute("href") ).replace(/^#/,",");
-		hm.changeHash.call(hm, hash);
-		HUX.Compat.preventDefault(ev);
-	},
-	
-	/**
-	 * Function: updateHash
-	 * updates the hash
-	 * 
-	 * Parameters:
-	 * 	- *hash*: {String} the new hash to set 
-	 * 	- *keepPrevHash*: {Boolean} true if we do not change the current hash (optional; default: false)
-	 */
-	updateHash: function(hash, keepPrevHash){
-		if( hash.replace(/^#/, "") !== location.hash.replace(/^#/, "") ){
-			HUX.HashMgr.__prev_hash = hash; // necessary in order to prevent another execution of changeHash via handleIfChangement
-			location.hash = hash;
-		}
-		
-	},
-	/**
-	 * Function: changeHash
-	 * handles the hash modification
-	 * 
-	 * Parameters:
-	 * 	- *sHash* : {String} the hash to treat. Can be null (default : location.hash)
-	 * 	- *keepPrevHash*: {Boolean} set to true if used by init, false otherwise.
-	 */
-	changeHash: function(sHash, keepPrevHash){
-		// what we name a pair here 
-		// is a pair "TARGET ID" : "URL" that you can find in the hash
-		var hash = (sHash || location.hash).toString().replace(/^#,?/, "").split(/,[^!]/),
-		    sPairs = hash[0].split(/,/), // the pairs described in the hash 
-		    normalHash = hash[1] || ""; // the hash that usually lead to an anchor (is at the end of the hash, must not begin with a '!')
-		this.__pairs.change( sPairs );
-		var sHash = "#"+this.__pairs.map(function(e){return "!"+e.target+"="+e.url;}).join(",") +  normalHash;
-		this.updateHash(sHash, keepPrevHash);
-		HUX.HashMgr.IFrameHack.updateIFrame(); // only if IFrameHack enabled
-	},
-	
+	};
 	/* 
-	 * namespace: HUX.HashMgr.IFrameHack
+	 * namespace: HUX.HashMgr.inner.IFrameHack
 	 * hack for browsers from which we cannot use previous or next button (for history) to go to the previous hash
 	 */
-	IFrameHack: {
-		/* this hack is only enabled for MSIE 1-7 */
+	inner.IFrameHack = {
+		/* this hack is only enabled for MSIE 7- */
 		/**
 		 * Variable: enabled
 		 * {boolean} if true, this hack is enabled. Only enable for MSIE 1->7
 		 */
-		enabled: navigator.userAgent.search(/MSIE [1-7]\./) > 0 || ( "documentMode" in document && document.documentMode < 8 ), 
+		enabled: inner.msieVersion && inner.msieVersion < 8, //navigator.userAgent.search(/MSIE [1-7]\./) > 0 || ( "documentMode" in document && document.documentMode < 8 ), 
 		iframe:null,
 		id:"HUXIFrameHack", // the id of the iframe
 		tmpDisableUpd: false, // we need to disable temporary the IFrame update 
+	       
 		// creates an iframe if the lasts does not exists, and if the Iframe Hack is enabled
-		__createIFrame: function(){
+		createIFrame: function(){
 			this.iframe = document.createElement("iframe");
 			this.iframe.id=this.id;
 			this.iframe.src="about:blank";
 			this.iframe.style.display = "none";
 			document.body.appendChild(this.iframe);
-		},
-		/**
-		 * Function: createIFrame
-		 * creates the Iframe
-		 */
-		createIFrame: function(){
-			return HUX.HashMgr.IFrameHack.__createIFrame.apply(HUX.HashMgr.IFrameHack, arguments);
 		},
 		/**
 		 * Function: updateIframe
@@ -1968,7 +1959,7 @@ HUX.HashMgr = {
 				if(!this.tmpDisableUpd){
 					var doc = this.iframe.contentWindow.document;
 					doc.open("javascript:'<html></html>'");
-					doc.write("<html><head><scri" + "pt type=\"text/javascript\">top.HUX.HashMgr.IFrameHack.setHash('"+location.hash+"');</scri" + "pt></head><body></body></html>");
+					doc.write("<html><head><scri" + "pt type=\"text/javascript\">top.HUX.HashMgr.inner.IFrameHack.setHash('"+location.hash+"');</scri" + "pt></head><body></body></html>");
 					doc.close();
 				}
 				else
@@ -1976,6 +1967,7 @@ HUX.HashMgr = {
 			}
 			
 		},
+
 		/**
 		 * Function: setHash
 		 * modifies the hash
@@ -1986,8 +1978,101 @@ HUX.HashMgr = {
 				location.hash = hash;
 			}
 		}
-	}
-};
+	};
+	
+
+	
+	// =============================
+	// PUBLIC FUNCTIONS AND PROPERTIES
+	// =============================
+	var pub = {
+		inner:inner,
+		/**
+		 * Property: asyncReq
+		 * {boolean} true if the requests have to be asynchronous, false otherwise (default: true)
+		 */
+		asyncReq: true,
+		
+		// =============================
+		// PUBLIC FUNCTIONS
+		// =============================
+		
+		
+		/**
+		 * Function: init
+		 * inits the module. 
+		 */
+		init:function(){
+			inner.pairs = new HUX.PairManager(inner.pairsCallbacks);
+			inner.contentSynchronizer = new HUX.ContentSynchronizer();
+			inner.hashchangeEnabled = ( "onhashchange" in window) && (! document.documentMode || document.documentMode >= 8);
+			// if the IFrameHack is needed, we create immediatly the iframe 
+			if(inner.IFrameHack.enabled)
+				inner.IFrameHack.createIFrame();
+			// initiate the listener to hash changement
+			if( inner.hashchangeEnabled )
+				HUX.Compat.addEventListener(window, "hashchange", inner.handleIfChangement);
+			else // if hashchange event is not supported
+				inner.watch();
+			// we listen to any anchor beginning with "#!" (corresponding to CCS3 Selector : a[href^="#!"])
+			HUX.addLiveListener(pub.listen);
+			// we treat location.hash
+			pub.changeHash(location.hash);
+			HUX.HUXEvents.createEventType("afterHashChanged");
+		},
+		/**
+		 * Function: listen
+		 * Binds all anchor elements having an href beginning with "#!"
+		 * 
+		 * Parameters:
+		 * 	- *context*: {Element} the context where we listen for events
+		 */
+		listen: function(context){
+			var fnFilter, prefixedTN, fnEach;
+			fnEach = function(el){
+				HUX.Compat.addEventListenerOnce(el, "click", inner.onClick);
+			};
+			// we look for anchors whose href begins with "#!" 
+			// so anchors with hash operations ("#!+", "#!-") can be treated before location.hash is changed
+			inner.findAnchors(context, fnEach);
+		},
+
+		/**
+		 * Function: changeHash
+		 * handles the hash modification
+		 * 
+		 * Parameters:
+		 * 	- *sHash* : {String} the hash to treat. Can be null (default : location.hash)
+		 */
+		changeHash: function(sHash){
+			// what we name a pair here 
+			// is a pair "TARGET ID" : "URL" that you can find in the hash
+			var keys = [], hash = sHash.replace(/^#,?/, "").split(/,[^!]/),
+			    sPairs = hash[0].split(/,/), // the pairs described in the hash 
+			    normalHash = hash[1] || ""; // the hash that usually lead to an anchor (is at the end of the hash, must not begin with a '!')
+			HUX.Compat.forEach(sPairs, function(sPair){
+				var pair = sPair.replace(/^!/,'').split('=');
+				if(sPair.charAt(0) !== '-' && pair.length === 2)
+					keys.push( pair[0] );
+			});
+			inner.contentSynchronizer.setKeys(keys);
+			inner.pairs.change( sPairs );
+			var sHash = "#"+inner.pairs.map(function(e){return "!"+e.target+"="+e.url;}).join(",") +  normalHash;
+			inner.updateHash(sHash);
+			inner.IFrameHack.updateIFrame(); // only if IFrameHack enabled
+		},
+	       
+		addBang: function(target, url){
+			return pub.changeHash("#!+"+target+"="+url);
+		},
+		removeBang: function(target){
+			return pub.changeHash("#!-"+target);
+		}
+		
+
+	};
+	return pub;
+})();
 
 HUX.addModule(HUX.HashMgr);
 
@@ -2096,7 +2181,7 @@ HUX.Form = {
 	 * 
 	 */
 	init: function(){
-		HUX.addLiveListener(HUX.Form);
+		HUX.addLiveListener(HUX.Form.listen);
 	},
 	/**
 	 * Function: listen
@@ -2190,147 +2275,9 @@ HUX.Form = {
 	}
 }; 
 HUX.addModule(HUX.Form);
-HUX.addToAPI({submit: HUX.Form.submit});
 
 
 /**
-    HTTP Using XML (HUX) : Script Injecter
-    Copyright (C) 2011  Florent FAYOLLE
-    
-    Permission is hereby granted, free of charge, to any person obtaining a copy
-    of this software and associated documentation files (the "Software"), to deal
-    in the Software without restriction, including without limitation the rights
-    to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-    copies of the Software, and to permit persons to whom the Software is
-    furnished to do so, subject to the following conditions:
-    The above copyright notice and this permission notice shall be included in
-    all copies or substantial portions of the Software.
-
-    THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-    IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-    FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-    AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-    LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-    OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
-    THE SOFTWARE.
-**/
-
-// scriptinjecter.hux.js
-
-/**
- * Namespace: HUX.ScriptInjecter
- * inject scripts and run them when they are loaded
- */
-
-HUX.ScriptInjecter = {
-	head:document.getElementsByTagName("head")[0],
-	asyn: false,
-	/**
-	 * Function : init
-	 * inits the module
-	 */
-	init: function(){
-		HUX.HUXEvents.bindGlobal("afterInject", this.searchScripts);
-	},
-	/**
-	 * Function: searchScripts
-	 * search for scripts to inject and run
-	 * 
-	 * Parameters:
-	 * 	- *ev* : {HUX Event Object}
-	 */
-	searchScripts: function(ev){
-		try{
-			var scripts = [];
-			var toArray = Array.prototype.slice;
-			HUX.Compat.forEach(ev.children, function(child){
-				if(child.tagName === "SCRIPT")
-					scripts.push(child);
-				else if(child.nodeType === 1)
-					scripts.push.apply(scripts, HUX.toArray(child.getElementsByTagName("script")));
-			});
-			HUX.ScriptInjecter.exec.call(HUX.ScriptInjecter, scripts);
-		}
-		catch(ex){
-			HUX.logError(ex);
-		}
-	},
-	/**
-	 * Function: exec
-	 * execute scripts
-	 * 
-	 * Parameters:
-	 * 	- *aScripts* : {Array of Element} the array of all the remaining script elements to execute
-	 */
-	exec: function(aScripts){
-		if(aScripts.length === 0)
-			return;
-		var script = aScripts.pop();
-		if(script.src){
-			this.loadScript(script, aScripts);
-		}
-		else{
-			this.evalScript(script, aScripts);
-		}
-	},
-	/**
-	 * Function: evalScript
-	 * executes a script, having no src attribute
-	 * 
-	 * Parameters:
-	 * 	- *curScript* : {Element} the script to execute
-	 * 	- *aScripts* : {Array of Element} array of all the remaining script elements to execute
-	 */
-	evalScript: function(curScript, aScripts){
-		var script = document.createElement("script"), head = this.head;
-		// we take the content of the script 
-		if(curScript.textContent)
-			script.textContent = curScript.textContent;
-		else if(curScript.innerHTML && typeof script.text !== "undefined")
-			script.text = curScript.innerHTML;
-		// we insert it in a different thread
-		setTimeout(function(){
-			head.insertBefore( script, head.firstChild );
-			head.removeChild( script ); 
-		}, 0);
-		
-		this.exec( aScripts );
-	},
-	/**
-	 * Function: loadScript
-	 * 
-	 * loads a script, having a src attribute
-	 * 
-	 * Parameters:
-	 * 	- *curScript* : {Element} the script to execute
- 	 * 	- *aScripts* : {Array of Element} array of all the remaining script elements to execute
-	 */
-	loadScript: function(curScript, aScripts){
-		var script = document.createElement("script"), self= this, done = false, head = this.head;
-		script.src = curScript.src;
-		script.type = curScript.type;
-		this.head.insertBefore(script, this.head.firstChild);
-		// inspired from jQuery
-		// Attach handlers for all browsers
-		script.onload = script.onreadystatechange = function() {
-			if ( !done && (!script.readyState ||
-					script.readyState === "loaded" || script.readyState === "complete") ) {
-				done = true;
-			
-				// Handle memory leak in IE
-				script.onload = script.onreadystatechange = null;
-				head.removeChild( script );
-				if( !self.asyn )
-					self.exec( aScripts );
-			}
-		};
-		if(this.asyn)
-			this.exec( aScripts );
-	}
-	
-};
-
-HUX.addModule( HUX.ScriptInjecter );/**
     HTTP Using XML (HUX) : Stage Class Manager
     Copyright (C) 2011  Florent FAYOLLE
     
@@ -2739,29 +2686,26 @@ HUX.AtMgr = (function(){
 		// history level
 		level:0,
 		pairs: null,
-		
+		asyncReq: true,
+		state:  null,
+		contentSynchronizer: null,
+		default_contents: {},
 		/**
 		 * Callbacks per action (add, delete or replace a pair in @...).
 		 */
 		pairsCallbacks: {
 			onAdd: function(added){
-				var sTarget = added.target, target = document.getElementById(sTarget);
-				if(target !== null){
-					inner.default_contents[sTarget] = target.innerHTML;
-					return inner.load(target, added.url);
-				}
-				else{
-					return false;
-				}
+				// we make sure we call inner.saveDefaultContent only once : 
+				HUX.HUXEvents.unbind(added.target, "beforeInject", inner.saveDefaultContent);
+				// we listen to "beforeInject" se we save the default content : 
+				HUX.HUXEvents.bind(added.target, "beforeInject", inner.saveDefaultContent);
+				// then we load the content asynchronously
+				inner.load(added.target, added.url);
+				return true;
 			},
 			onReplace: function(added){
-				var target = document.getElementById(added.target);
-				if(target !== null){
-					return inner.load(target, added.url);
-				}
-				else{
-					return false;
-				}
+				inner.load(added.target, added.url);
+				return true;
 			},
 			onDelete: function(deleted){
 				var sTarget = deleted.target, replacement = inner.default_contents[sTarget];
@@ -2776,10 +2720,11 @@ HUX.AtMgr = (function(){
 				return false;
 			}
 		},
-		asyncReq: false,
-		state:  null,
-		default_contents : {},
-		
+		saveDefaultContent: function(ev){
+			inner.default_contents[ev.target.id] = ev.target.innerHTML;
+			// we unbind since we want it to vbe executed only once
+			HUX.HUXEvents.unbind(ev.target.id, "beforeInject", inner.saveDefaultContent);
+		},
 		/**
 		 * Function; createPairMgr
 		 * creates an instance of HUX.PairManager for AtMgr
@@ -2791,7 +2736,7 @@ HUX.AtMgr = (function(){
 		 * 	- {HUX.PairManager} the instance
 		 */
 		createPairMgr: function(callbacks){
-			return HUX.PairManager.split((location.toString().match(/[^@]@(.*)/) || ["",""])[1], /([^=,]+)=([^=,]+)/g, callbacks);
+			return new HUX.PairManager(callbacks);//.split((location.toString().match(/[^@]@(.*)/) || ["",""])[1], /([^=,]+)=([^=,]+)/g, callbacks);
 		},
 		
 		findAnchors: function(context, fnEach){
@@ -2810,10 +2755,10 @@ HUX.AtMgr = (function(){
 		},
 		
 		/**
-		 * Function: updateState
+		 * Function: setState
 		 * sets the history state if history.state does not exist
 		 */
-		updateState: function(state){
+		setState: function(state){
 			if(!history.state)
 				inner.state = state;
 		},
@@ -2834,12 +2779,19 @@ HUX.AtMgr = (function(){
 				url:url,
 				method:'get',
 				async:inner.asyncReq,
-				filling:"replace", 
-				target:target
+				filling:"replace",
+				target: document.getElementById(target)
 			};
-			
-			var xhr = HUX.xhr(opt);
-			return xhr.status === 200;
+			opt.onSuccess = function(xhr){
+				// NOTE : cf "return false" dans callbacks
+				inner.contentSynchronizer.addContent(target, (xhr.responseXML && xhr.responseXML.documentElement)? 
+					xhr.responseXML : 
+					xhr.responseText );
+			};
+			opt.onError = function(xhr){
+				inner.contentSynchronizer.addContent(target, HUX.XHR.inner.getDefaultErrorMessage(xhr));
+			};
+			HUX.xhr(opt);
 		},
 		/**
 		 * Function: initHUXState
@@ -2867,7 +2819,6 @@ HUX.AtMgr = (function(){
 		 * Function: pushState
 		 * adds a new history state
 		 * 
-		 * 
 		 */
 		pushState: function(obj, title, newState){
 			var state = {
@@ -2876,6 +2827,14 @@ HUX.AtMgr = (function(){
 					level: ++inner.level
 				}
 			};
+			if(newState === undefined){
+				//var filename = ;(location.toString().match(/.*\/([^@]*)/) || [null,""])[1];
+				var oldAtInclusions = pub.getAtInclusions(), newAtInclusions = inner.pairs.toString();
+				if( oldAtInclusions )
+					newState = location.toString().replace(oldAtInclusions, newAtInclusions);
+				else
+					newState = location.toString() + newAtInclusions;
+			}
 			history.pushState(state, title, newState);
 		},
 		/**
@@ -2887,7 +2846,7 @@ HUX.AtMgr = (function(){
 				var state = event.state;
 				if(!state || state.HUX_AT === undefined || !inner.enabled)
 					return;
-				inner.updateState( state );
+				inner.setState( state );
 				/*var old_level = inner.level;
 				inner.level = inner.level;*/
 				pub.changeAt(location.toString(), false);
@@ -2914,29 +2873,46 @@ HUX.AtMgr = (function(){
 		changeAt: function(at, addNewState){
 			at = at.replace(/.*@!?/g, "");
 			var sPairs = at.split(/,!?/), 
-			    newInfo = []; // empty for now ...
+			    newInfo = [],// empty for now ...
+			    keys; 
+			keys = sPairs.map(function(s){ 
+					return (s.match(/^\+?([^=]+)/) || [null,null])[1];
+				}).filter(function(s){ 
+					return s !== null && s.charAt(0) !== '-';
+				});
+			inner.contentSynchronizer.setKeys( keys );
 			inner.pairs.change(sPairs);
 			if(addNewState !== false){ // default is true
-				var filename = (location.toString().match(/.*\/([^@]*)/) || [null,""])[1];
-				inner.pushState(newInfo, "", filename +  inner.pairs.toString());
+				inner.pushState(newInfo, "");
 			}
+		},
+		addAt: function(target, url, addNewState){
+			var ret = inner.pairs.setPair(target, url);
+			if(addNewState !== false)
+				inner.pushState([], "");
+			return ret;
+		},
+		removeAt: function(target, addNewState){
+			var ret = inner.pairs.removePair(target);
+			if(addNewState !== false)
+				inner.pushState([], "");
+			return ret;
 		},
 		init: function(){
 			if(! inner.enabled )
 				return;
-			inner.pairs = inner.createPairMgr(inner.pairsCallbacks);
+			inner.contentSynchronizer = new HUX.ContentSynchronizer();
+			inner.pairs = new HUX.PairManager(inner.pairsCallbacks);
+			inner.pairs.toString = function(){
+				return "@"+this.map(function(a){ return a.target+"="+a.url; }).join();
+			};
 			if(!pub.getState() || ! ( (pub.getState().HUX_AT || null) instanceof Object) ){
 				inner.initHUXState();
 			}
 			//this.addObjectToState({});
-			HUX.addLiveListener( this );
+			HUX.addLiveListener( pub.listen );
 			
-			inner.pairs.toString = function(){
-				return "@"+this.map(function(a){ return a.target+"="+a.url; }).join();
-			};
-			if( inner.pairs.toString() !== ( location.toString().match(/@.*/)||["@"] )[0] ){
-				inner.pushState([], "", location.toString().replace(/@.*/g, "") + inner.pairs.toString());
-			}
+			pub.changeAt( pub.getAtInclusions() || "@" );
 		},
 		listen: function(context){
 			// this module works only with modern browsers which implements history.pushState
@@ -2944,6 +2920,12 @@ HUX.AtMgr = (function(){
 			inner.findAnchors(context, function(el){ 
 				HUX.Compat.addEventListener(el, "click", inner.onClick); 
 			});
+		},
+		getAtInclusions: function(){
+			return ( (location.pathname + location.search).match(/@.*/) || [null] )[0];
+		},
+		getAtInclusionValue: function(key){
+			return inner.pairs.getPairValue(key);
 		},
 		/**
 		 * Function; getState
@@ -2972,7 +2954,7 @@ HUX.addModule( HUX.AtMgr );
 	if(history.pushState && history.state === undefined){
 		proxy = function(origFn, state){
 			origFn.execute(history);
-			HUX.AtMgr.inner.updateState( state );
+			HUX.AtMgr.inner.setState( state );
 		};
 		history.pushState = HUX.wrapFn(history.pushState, proxy );
 		history.replaceState = HUX.wrapFn(history.replaceState,  proxy );
@@ -3008,33 +2990,71 @@ HUX.addModule( HUX.AtMgr );
  * Requires: HUX.AtMgr, HUX.HashMgr
  */
 
-HUX.AtMgrFb = {
-	enabled: ! HUX.AtMgr.inner.enabled,
-	init: function(){
-		if(this.enabled){
-			HUX.addLiveListener(this);
+HUX.AtMgrFb = (function(){
+	var inner = {
+		testExecuteOrig: function(){
+			return !pub.enabled || !pub.overrideAtMgrMethods;
+		},
+		extChangeAt: function(fnOrig, at, addNewState){
+			if( inner.testExecuteOrig() )
+				return fnOrig.execute();
+			var href = inner.replaceHref( at );
+			HUX.HashMgr.changeHash(href);
+		},
+		extAddAt: function(fnOrig, target, url, addNewState){
+			if( inner.testExecuteOrig() )
+				return fnOrig.execute();
+			return HUX.HashMgr.addBang(target, url);
+		},
+		extRemoveAt: function(fnOrig, target, addNewState){
+			if( inner.testExecuteOrig() )
+				return fnOrig.execute();
+			return HUX.HashMgr.removeBang(target);
+		},
+		replaceHref: function(href){
+			return href.replace(/^.*@/, "#!").replace(/,([^!])/g, ",!$1")
 		}
-	},
-	listen: function(context){
-		if(this.enabled)
-			HUX.AtMgr.inner.findAnchors(context, this.replaceEach);
+	};
+	
+	var pub = {
+		enabled: ! HUX.AtMgr.inner.enabled,
+		overrideAtMgrMethods: true,
+		init: function(){
+			var am;
+			if(pub.enabled){
+				am = HUX.AtMgr;
+				HUX.addLiveListener(HUX.AtMgrFb);
+				am.changeAt = HUX.wrapFn(am.changeAt, inner.extChangeAt);
+				am.addAt = HUX.wrapFn(am.addAt, inner.extAddAt);
+				am.removeAt = HUX.wrapFn(am.removeAt, inner.extRemoveAt);
+			}
+		},
+		listen: function(context){
+			if(pub.enabled)
+				HUX.AtMgr.inner.findAnchors(context, pub.replaceEach);
+			
+		},
 		
-	},
+		replaceEach: function(el){
+			el.href = inner.replaceHref(el.href);
+			// we ensure that the listener will not be called twice
+			HUX.Compat.addEventListenerOnce(el, "click", HUX.HashMgr.inner.onClick); 
+		}
+	};
+	return pub;
 	
-	replaceEach: function(el){
-		el.href = el.href.replace(/^.*@/, "#!").replace(/,([^!])/g, ",!$1");
-		// we ensure that the listener will not be called twice
-		HUX.Compat.addEventListenerOnce(el, "click", HUX.HashMgr.onClick); 
-	}
-	
-};
+})();
+
 (function(am){
 	am.setEnabled = HUX.wrapFn(am.setEnabled, function(fnOrig, val){
 		HUX.AtMgrFb.enabled = !val;
 		return fnOrig.execute(um);
 	});
 })(HUX.AtMgr);
+
 HUX.addModule(HUX.AtMgrFb);
+
+
  /**
     HTTP Using XML (HUX) : Form Update Url
     Copyright (C) 2011  Florent FAYOLLE

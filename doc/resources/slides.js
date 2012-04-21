@@ -1,70 +1,32 @@
 HUX.Slide = {
 	init: function(){
-		HUX.Compat.addEventListener(window, "keydown", this.treatSlideChange);
+		// add event listener to document because of IE 8-
+		HUX.Compat.addEventListener(document, "keydown", this.treatSlideChange);
 		var slideCont = this.getSlideContainer();
 		/*if( slideCont !== null )
 			this.updateDirectionLinks(slideCont);*/
 	},
 	nbSlides: 7,
-	
-	afterInject: function(ev){
-		if( ev.target.id === "slide" ){
-			HUX.Slide.updateDirectionLinks(ev.target);
-		}
-	},
-	getNextLink: function(){
-		return document.getElementById("nextSlide");
-	},
-	getPrevLink: function(){
-		return document.getElementById("prevSlide");
-	},
-	slideNumber: function(slide){
-		return parseInt( (slide || this.getSlideContainer()).children[0].getAttribute("data-slide") );
-	},
+	curSlide: 0,
 	getSlideContainer: function(){
 		return document.getElementById("slide");
 	},
 	treatSlideChange: function(event){
 		var self = HUX.Slide, elDir;
 		if( self.getSlideContainer() !== null ){
-			if(event.keyCode === 39){ // NEXT
-				elDir = self.getNextLink();
+			if(event.keyCode === 39 && self.curSlide < self.nbSlides-1){ // NEXT
+				HUX.AtMgr.addAt("slide", "s_"+(++self.curSlide));
 			}
-			else if(event.keyCode === 37){ // PREVIOUS
-				elDir = self.getPrevLink();
+			else if(event.keyCode === 37 && self.curSlide > 0){ // PREVIOUS
+				self.curSlide--;
+				if(self.curSlide >= 1)
+					HUX.AtMgr.addAt("slide", "s_"+self.curSlide);
+				else
+					HUX.AtMgr.removeAt("slide");
 			}
 			
-			if(elDir !== undefined && elDir.style.display !== "none")
-				HUX.AtMgr.changeAt(elDir.getAttribute("href"));
 		}
-	},
-	updateDirectionLink: function(link, numSlide){
-		if(numSlide < 0 || numSlide === HUX.Slide.nbSlides )
-			link.style.display = "none";
-		else
-			link.style.display = "inline";
-		var replacement = (numSlide <= 0 ? "@-slide": ("@+slide=s_"+numSlide));
-		link.href = replacement;
-	},
-	updateDirectionLinks: function(slide){
-		var curSlide;
-		curSlide = this.slideNumber(slide);
-		this.updateDirectionLink( this.getNextLink(), curSlide+1 );
-		this.updateDirectionLink( this.getPrevLink(), curSlide-1 );
-	}/*,
-	simulateClick: function(link){
-		if("click" in link)
-			link.click();
-		else if(link.fireEvent)
-			link.fireEvent("onclick");
-		else{
-			var evt = document.createEvent("MouseEvents");
-			evt.initMouseEvent("click", false, false, window,
-			0, 0, 0, 0, 0, false, false, false, false, 0, null);
-			link.dispatchEvent(evt);
-		}
-	}*/
+	}
 	
 };
 HUX.addModule(HUX.Slide);
-HUX.HUXEvents.bindGlobal("afterInject", HUX.Slide.afterInject);

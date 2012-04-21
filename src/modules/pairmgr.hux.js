@@ -34,7 +34,6 @@ HUX.PairManager = function(callbacks){
 		this.getLength = function(){ return pairs.length; };
 		// sets the value at the specified index
 		this.set = function(index, value){
-			
 			return pairs[index] = value;
 		};
 		this.get = function(index){ return pairs[index] };
@@ -115,13 +114,23 @@ HUX.PairManager = function(callbacks){
 		return {target:pair[0], url:pair[1]};
 	};
 	this.change = function(sPairs){
-		var reModif = /^!?[+-]/, isModif = reModif.test( sPairs[0] ); // isModif === true if the first character of the first pair equals to '+' or '-'
+		var reModif = /^!?[+-]/, isModif = reModif.test( sPairs[0] ), // isModif === true if the first character of the first pair equals to '+' or '-'
+		    op, lastop ; // lastop : the last operator
 		
 		if(isModif) {
 			for(var i = 0; i < sPairs.length; i++){
 				
-				var sPair = sPairs[i], bangOffset = (sPair.charAt(0)==='!'?1:0), op = sPair.charAt(bangOffset), pair, sTarget;
-				sPair = sPair.slice(bangOffset+ 1); // we remove '+' or '-' from sPair
+				var sPair = sPairs[i], bangOffset = (sPair.charAt(0)==='!'?1:0), pair, sTarget;
+				op = sPair.charAt(bangOffset);
+				//
+				if(! /[+-]/.test(op) ){
+					op = lastop;
+				}
+				else{
+					sPair = sPair.slice(bangOffset+ 1); // we remove '+' or '-' from sPair
+				}
+				lastop = op;
+				
 				if(op === '-'){
 					this.removePair(sPair);
 				}
@@ -189,6 +198,10 @@ HUX.PairManager = function(callbacks){
 				this.push( added );
 		}
 		return {index: index, ok: ok};
+	};
+	this.getPairValue = function(target){
+		var index = this.indexOf(target);
+		return index >= 0 ? this.get(index).url : null;
 	};
 	/**
 	 * Function: removePair

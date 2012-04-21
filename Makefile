@@ -5,7 +5,7 @@ MODULES=$(SRC)/modules
 CORE=$(SRC)/core/core.hux.js
 CCAT_MOD= @@cat $(MODULES)/$(1).hux.js >> $(HUX_JS);
 
-all: core simpleloader hashmgr hashmgr4indexing form scriptinjecter stageclassmgr overlay atmgr atmgrfallback formupdateurl xhtmlsupport# transition 
+all: core simpleloader hashmgr hashmgr4indexing form stageclassmgr overlay atmgr atmgrfallback formupdateurl xhtmlsupport# scriptinjecter transition 
 	@@echo "generation done";
 all-dev: all checker
 
@@ -15,7 +15,7 @@ core: init
 	@@cat $(CORE) >> $(HUX_JS); 
 simpleloader: core
 	$(call CCAT_MOD,simpleloader)
-hashmgr: pairmgr core
+hashmgr: pairmgr contentsynchronizer core
 	$(call CCAT_MOD,hashmgr)
 hashmgr4indexing: hashmgr
 	$(call CCAT_MOD,hashmgr4indexing)
@@ -29,10 +29,12 @@ stageclassmgr: core
 	$(call CCAT_MOD,stageclassmgr)
 overlay: core
 	$(call CCAT_MOD,overlay)
-atmgr:  pairmgr core
+atmgr:  pairmgr contentsynchronizer core
 	$(call CCAT_MOD,atmgr)
 pairmgr: core
 	$(call CCAT_MOD,pairmgr)
+contentsynchronizer: core
+	$(call CCAT_MOD,contentsynchronizer)
 transition: stageclassmgr
 	$(call CCAT_MOD,transition)
 atmgrfallback: atmgr hashmgr

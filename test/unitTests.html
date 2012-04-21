@@ -104,6 +104,11 @@
 							equal( ( trC[0].textContent || trC[0].innerText).replace(/^[\s]*/g,""), form.login.value);
 							equal( trC[1].innerHTML, form.comment.value);
 						});
+					},
+					function(container){
+						test("form updateurl", function(){
+							equal(location.toString().search("containerForm") >= 0, true); 
+						});
 					}
 				],
 				"HM": [
@@ -175,7 +180,7 @@
 					arrFnCheck.Form.shift().call(this, container);
 					do{ // we look for the next "form" element
 						form = form.nextSibling;
-					}while(form !== null && ! (typeof form.submit === "undefined" /* <=> !( form instanceof HTMLFormElement )*/) );
+					}while(form !== null && (typeof form.submit === "undefined" /* <=> !( form instanceof HTMLFormElement )*/) );
 					if(form !== null && form.submit)
 						form.submit();
 					else if(arrFnCheck.Form.length === 0)
@@ -237,6 +242,11 @@
 				<form id="formComment" action="CGI/comment.php" method="POST" data-hux-target="containerForm">
 					<input type="text" name="login" value="John Doe" />
 					<textarea name="comment">Where am I?</textarea>
+					<input type="submit" name="submit"/>
+				</form>
+				<form id="formComment2" action="CGI/comment.php" method="GET" data-hux-target="containerForm" data-hux-updateUrl="enabled">
+					<input type="text" name="login" value="John Doe" />
+					<textarea name="comment">Where am I</textarea>
 					<input type="submit" name="submit"/>
 				</form>
 			</div>

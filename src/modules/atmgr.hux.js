@@ -27,29 +27,26 @@ HUX.AtMgr = (function(){
 		// history level
 		level:0,
 		pairs: null,
-		
+		asyncReq: true,
+		state:  null,
+		contentSynchronizer: null,
+		default_contents: {},
 		/**
 		 * Callbacks per action (add, delete or replace a pair in @...).
 		 */
 		pairsCallbacks: {
 			onAdd: function(added){
-				var sTarget = added.target, target = document.getElementById(sTarget);
-				if(target !== null){
-					inner.default_contents[sTarget] = target.innerHTML;
-					return inner.load(target, added.url);
-				}
-				else{
-					return false;
-				}
+				// we make sure we call inner.saveDefaultContent only once : 
+				HUX.HUXEvents.unbind(added.target, "beforeInject", inner.saveDefaultContent);
+				// we listen to "beforeInject" se we save the default content : 
+				HUX.HUXEvents.bind(added.target, "beforeInject", inner.saveDefaultContent);
+				// then we load the content asynchronously
+				inner.load(added.target, added.url);
+				return true;
 			},
 			onReplace: function(added){
-				var target = document.getElementById(added.target);
-				if(target !== null){
-					return inner.load(target, added.url);
-				}
-				else{
-					return false;
-				}
+				inner.load(added.target, added.url);
+				return true;
 			},
 			onDelete: function(deleted){
 				var sTarget = deleted.target, replacement = inner.default_contents[sTarget];
@@ -64,10 +61,11 @@ HUX.AtMgr = (function(){
 				return false;
 			}
 		},
-		asyncReq: false,
-		state:  null,
-		default_contents : {},
-		
+		saveDefaultContent: function(ev){
+			inner.default_contents[ev.target.id] = ev.target.innerHTML;
+			// we unbind since we want it to vbe executed only once
+			HUX.HUXEvents.unbind(ev.target.id, "beforeInject", inner.saveDefaultContent);
+		},
 		/**
 		 * Function; createPairMgr
 		 * creates an instance of HUX.PairManager for AtMgr
@@ -79,7 +77,7 @@ HUX.AtMgr = (function(){
 		 * 	- {HUX.PairManager} the instance
 		 */
 		createPairMgr: function(callbacks){
-			return HUX.PairManager.split((location.toString().match(/[^@]@(.*)/) || ["",""])[1], /([^=,]+)=([^=,]+)/g, callbacks);
+			return new HUX.PairManager(callbacks);//.split((location.toString().match(/[^@]@(.*)/) || ["",""])[1], /([^=,]+)=([^=,]+)/g, callbacks);
 		},
 		
 		findAnchors: function(context, fnEach){
@@ -98,10 +96,10 @@ HUX.AtMgr = (function(){
 		},
 		
 		/**
-		 * Function: updateState
+		 * Function: setState
 		 * sets the history state if history.state does not exist
 		 */
-		updateState: function(state){
+		setState: function(state){
 			if(!history.state)
 				inner.state = state;
 		},
@@ -122,12 +120,19 @@ HUX.AtMgr = (function(){
 				url:url,
 				method:'get',
 				async:inner.asyncReq,
-				filling:"replace", 
-				target:target
+				filling:"replace",
+				target: document.getElementById(target)
 			};
-			
-			var xhr = HUX.xhr(opt);
-			return xhr.status === 200;
+			opt.onSuccess = function(xhr){
+				// NOTE : cf "return false" dans callbacks
+				inner.contentSynchronizer.addContent(target, (xhr.responseXML && xhr.responseXML.documentElement)? 
+					xhr.responseXML : 
+					xhr.responseText );
+			};
+			opt.onError = function(xhr){
+				inner.contentSynchronizer.addContent(target, HUX.XHR.inner.getDefaultErrorMessage(xhr));
+			};
+			HUX.xhr(opt);
 		},
 		/**
 		 * Function: initHUXState
@@ -155,7 +160,6 @@ HUX.AtMgr = (function(){
 		 * Function: pushState
 		 * adds a new history state
 		 * 
-		 * 
 		 */
 		pushState: function(obj, title, newState){
 			var state = {
@@ -164,6 +168,14 @@ HUX.AtMgr = (function(){
 					level: ++inner.level
 				}
 			};
+			if(newState === undefined){
+				//var filename = ;(location.toString().match(/.*\/([^@]*)/) || [null,""])[1];
+				var oldAtInclusions = pub.getAtInclusions(), newAtInclusions = inner.pairs.toString();
+				if( oldAtInclusions )
+					newState = location.toString().replace(oldAtInclusions, newAtInclusions);
+				else
+					newState = location.toString() + newAtInclusions;
+			}
 			history.pushState(state, title, newState);
 		},
 		/**
@@ -175,7 +187,7 @@ HUX.AtMgr = (function(){
 				var state = event.state;
 				if(!state || state.HUX_AT === undefined || !inner.enabled)
 					return;
-				inner.updateState( state );
+				inner.setState( state );
 				/*var old_level = inner.level;
 				inner.level = inner.level;*/
 				pub.changeAt(location.toString(), false);
@@ -202,29 +214,46 @@ HUX.AtMgr = (function(){
 		changeAt: function(at, addNewState){
 			at = at.replace(/.*@!?/g, "");
 			var sPairs = at.split(/,!?/), 
-			    newInfo = []; // empty for now ...
+			    newInfo = [],// empty for now ...
+			    keys; 
+			keys = sPairs.map(function(s){ 
+					return (s.match(/^\+?([^=]+)/) || [null,null])[1];
+				}).filter(function(s){ 
+					return s !== null && s.charAt(0) !== '-';
+				});
+			inner.contentSynchronizer.setKeys( keys );
 			inner.pairs.change(sPairs);
 			if(addNewState !== false){ // default is true
-				var filename = (location.toString().match(/.*\/([^@]*)/) || [null,""])[1];
-				inner.pushState(newInfo, "", filename +  inner.pairs.toString());
+				inner.pushState(newInfo, "");
 			}
+		},
+		addAt: function(target, url, addNewState){
+			var ret = inner.pairs.setPair(target, url);
+			if(addNewState !== false)
+				inner.pushState([], "");
+			return ret;
+		},
+		removeAt: function(target, addNewState){
+			var ret = inner.pairs.removePair(target);
+			if(addNewState !== false)
+				inner.pushState([], "");
+			return ret;
 		},
 		init: function(){
 			if(! inner.enabled )
 				return;
-			inner.pairs = inner.createPairMgr(inner.pairsCallbacks);
+			inner.contentSynchronizer = new HUX.ContentSynchronizer();
+			inner.pairs = new HUX.PairManager(inner.pairsCallbacks);
+			inner.pairs.toString = function(){
+				return "@"+this.map(function(a){ return a.target+"="+a.url; }).join();
+			};
 			if(!pub.getState() || ! ( (pub.getState().HUX_AT || null) instanceof Object) ){
 				inner.initHUXState();
 			}
 			//this.addObjectToState({});
-			HUX.addLiveListener( this );
+			HUX.addLiveListener( pub.listen );
 			
-			inner.pairs.toString = function(){
-				return "@"+this.map(function(a){ return a.target+"="+a.url; }).join();
-			};
-			if( inner.pairs.toString() !== ( location.toString().match(/@.*/)||["@"] )[0] ){
-				inner.pushState([], "", location.toString().replace(/@.*/g, "") + inner.pairs.toString());
-			}
+			pub.changeAt( pub.getAtInclusions() || "@" );
 		},
 		listen: function(context){
 			// this module works only with modern browsers which implements history.pushState
@@ -232,6 +261,12 @@ HUX.AtMgr = (function(){
 			inner.findAnchors(context, function(el){ 
 				HUX.Compat.addEventListener(el, "click", inner.onClick); 
 			});
+		},
+		getAtInclusions: function(){
+			return ( (location.pathname + location.search).match(/@.*/) || [null] )[0];
+		},
+		getAtInclusionValue: function(key){
+			return inner.pairs.getPairValue(key);
 		},
 		/**
 		 * Function; getState
@@ -260,7 +295,7 @@ HUX.addModule( HUX.AtMgr );
 	if(history.pushState && history.state === undefined){
 		proxy = function(origFn, state){
 			origFn.execute(history);
-			HUX.AtMgr.inner.updateState( state );
+			HUX.AtMgr.inner.setState( state );
 		};
 		history.pushState = HUX.wrapFn(history.pushState, proxy );
 		history.replaceState = HUX.wrapFn(history.replaceState,  proxy );

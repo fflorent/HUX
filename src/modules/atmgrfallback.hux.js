@@ -27,30 +27,68 @@
  * Requires: HUX.AtMgr, HUX.HashMgr
  */
 
-HUX.AtMgrFb = {
-	enabled: ! HUX.AtMgr.inner.enabled,
-	init: function(){
-		if(this.enabled){
-			HUX.addLiveListener(this);
+HUX.AtMgrFb = (function(){
+	var inner = {
+		testExecuteOrig: function(){
+			return !pub.enabled || !pub.overrideAtMgrMethods;
+		},
+		extChangeAt: function(fnOrig, at, addNewState){
+			if( inner.testExecuteOrig() )
+				return fnOrig.execute();
+			var href = inner.replaceHref( at );
+			HUX.HashMgr.changeHash(href);
+		},
+		extAddAt: function(fnOrig, target, url, addNewState){
+			if( inner.testExecuteOrig() )
+				return fnOrig.execute();
+			return HUX.HashMgr.addBang(target, url);
+		},
+		extRemoveAt: function(fnOrig, target, addNewState){
+			if( inner.testExecuteOrig() )
+				return fnOrig.execute();
+			return HUX.HashMgr.removeBang(target);
+		},
+		replaceHref: function(href){
+			return href.replace(/^.*@/, "#!").replace(/,([^!])/g, ",!$1")
 		}
-	},
-	listen: function(context){
-		if(this.enabled)
-			HUX.AtMgr.inner.findAnchors(context, this.replaceEach);
+	};
+	
+	var pub = {
+		enabled: ! HUX.AtMgr.inner.enabled,
+		overrideAtMgrMethods: true,
+		init: function(){
+			var am;
+			if(pub.enabled){
+				am = HUX.AtMgr;
+				HUX.addLiveListener(HUX.AtMgrFb);
+				am.changeAt = HUX.wrapFn(am.changeAt, inner.extChangeAt);
+				am.addAt = HUX.wrapFn(am.addAt, inner.extAddAt);
+				am.removeAt = HUX.wrapFn(am.removeAt, inner.extRemoveAt);
+			}
+		},
+		listen: function(context){
+			if(pub.enabled)
+				HUX.AtMgr.inner.findAnchors(context, pub.replaceEach);
+			
+		},
 		
-	},
+		replaceEach: function(el){
+			el.href = inner.replaceHref(el.href);
+			// we ensure that the listener will not be called twice
+			HUX.Compat.addEventListenerOnce(el, "click", HUX.HashMgr.inner.onClick); 
+		}
+	};
+	return pub;
 	
-	replaceEach: function(el){
-		el.href = el.href.replace(/^.*@/, "#!").replace(/,([^!])/g, ",!$1");
-		// we ensure that the listener will not be called twice
-		HUX.Compat.addEventListenerOnce(el, "click", HUX.HashMgr.onClick); 
-	}
-	
-};
+})();
+
 (function(am){
 	am.setEnabled = HUX.wrapFn(am.setEnabled, function(fnOrig, val){
 		HUX.AtMgrFb.enabled = !val;
 		return fnOrig.execute(um);
 	});
 })(HUX.AtMgr);
+
 HUX.addModule(HUX.AtMgrFb);
+
+

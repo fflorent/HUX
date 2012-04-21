@@ -52,7 +52,7 @@ HUX.Form = {
 	 * 
 	 */
 	init: function(){
-		HUX.addLiveListener(HUX.Form);
+		HUX.addLiveListener(HUX.Form.listen);
 	},
 	/**
 	 * Function: listen
@@ -146,6 +146,5 @@ HUX.Form = {
 	}
 }; 
 HUX.addModule(HUX.Form);
-HUX.addToAPI({submit: HUX.Form.submit});
 
 

@@ -1,6 +1,6 @@
 // fastly implemented module for HUX (not official)
 // save the currentTime of an audio in the URL
-HUX.AudioTime = {
+/*HUX.AudioTime = {
 	enabled:window.Audio !== undefined && history.pushState !== undefined,
 	init: function(){
 		if(this.enabled === false)
@@ -40,7 +40,7 @@ HUX.AudioTime = {
 		var ext = (id && document.getElementById(id)) ?  ",~"+id+"="+currTime   : "";
 		var stateUpdater, newState = (location.toString()).replace(/,?~([^,#]*)/g, "") + ext;
 		// we keep the same state
-		history.replaceState(HUX.AtMgr.getState(), "", newState);
+		history.replaceState(HUX.AtInclusion.getState(), "", newState);
 	},
 	adjustTime: function(context){
 		context = context || document;
@@ -68,7 +68,7 @@ HUX.AudioTime = {
 	}
 };
 
-// we say to AtMgr that a key beginning with a ~ is not a target, and ask not to remove it
+// we say to AtInclusion that a key beginning with a ~ is not a target, and ask not to remove it
 (function (ampc, hmpc){
 	var proxy = function(fnOrig, pair){
 		if(pair.target.indexOf("~") === 0)
@@ -79,6 +79,6 @@ HUX.AudioTime = {
 	ampc.onAdd = HUX.wrapFn(ampc.onAdd,  proxy );
 	ampc.onReplace = HUX.wrapFn(ampc.onReplace,  proxy );
 	hmpc.onAdd = HUX.wrapFn(hmpc.onAdd,  proxy );
-})( HUX.AtMgr.inner.pairsCallbacks, HUX.HashMgr.inner.pairsCallbacks ); 
+})( HUX.AtInclusion.inner.pairsCallbacks, HUX.HashBang.inner.pairsCallbacks ); 
 
-HUX.addModule(HUX.AudioTime);
+HUX.addModule(HUX.AudioTime);*/

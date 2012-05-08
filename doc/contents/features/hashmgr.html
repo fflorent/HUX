@@ -1,13 +1,14 @@
 <h1>Hash Manager</h1>
-<p>The Hash Manager is a plugin for HUX that updates the Hash of your URL at the same time that you load contents.</p>
-<p>This plugin is recommended when you need to store in your URL the contents that are injected via HUX in your document for most of the browsers.</p>
-<p class="note">NOTE : This plugin can only replace the content of a target element (no append nor prepend of content).</p>
+<p class="note">NOTE : If you want to index your website, you are recommended to use <a href="@+feature=contents/features/atinclusion.html">At Inclusion</a> instead</p>
+<p>Hash Bang is a module for HUX that manages history and updates URL as the user loads contents.</p>
+<p>By updating URL, Hash Bang ensures that the loaded contents are retrieved when the page is refreshed, or if the URL is shared with someone else.</p>
+<p>By managing history, Hash Bang lets the user click on "Back"/"Next" button of their browser to navigate through the history.</p>
 <h2>How To Use it</h2>
 <p>You can simply use it by creating links of this syntax : </p>
 <div class="code"><code>&lt;a href="#!TARGET_ID=URL_OF_YOUR_CONTENT"&gt;TEXT&lt;/a&gt;</code></div>
 <p>Where : </p>
 <ul>
-	<li>TARGET_ID is the <span class="attribute">ID</span> of your target element (see <a href="#!container=features,!feature=f_target">target</a> to understand what it is);</li>
+	<li>TARGET_ID is the <span class="attribute">ID</span> of your target element (see <a href="@+feature=contents/features/target.html">target</a> to understand what it is);</li>
 	<li>URL_OF_YOUR_CONTENT is the URL of the content you want to load;</li>
 </ul>
 <p class="warning">WARNING : HUX does not support cross-domain HTTP Requests. This means that you can only load content of your own site.</p>
@@ -49,6 +50,6 @@
 	</code>
 </div>
 <h4>Rendering : </h4>
-<a href="#!ex_hm_target2.1=resources/hello_world.html,!ex_hm_target2.2=resources/how_are_you.html">click to run Example 1</a>
+<a href="#!+ex_hm_target2.1=resources/hello_world.html,!ex_hm_target2.2=resources/how_are_you.html">click to run Example 1</a>
 <div id="ex_hm_target2.1">I will disapear...</div> 
 <div id="ex_hm_target2.2">I will disapear too...</div> 

@@ -8,7 +8,7 @@
  RewriteRule ^dij_([^/]*)$	/tmp/HUX/doc/contents/demos/images/$1.jpg
  RewriteRule ^dm_([^/]*)$	/tmp/HUX/doc/contents/demos/musics/$1.html
  RewriteRule ^s_([^/]*)$	/tmp/HUX/doc/contents/demos/slides/$1.html
- RewriteRule ^res_([^/]*)$	/tmp/HUX/doc/contents/resources/$1.html
+ RewriteRule ^res_([^/]*)$	/tmp/HUX/doc/resources/$1.html
  RewriteRule ^t_([^/]*)$	/tmp/HUX/doc/contents/tuto/$1.html
  RewriteRule ^c_([^/]*)$	/tmp/HUX/doc/contents/$1.html
 # RewriteCond %{REQUEST_FILENAME} !-f

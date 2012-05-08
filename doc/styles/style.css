@@ -13,47 +13,50 @@ a{
 	outline:none;
 }
 
+sub, sup{
+	font-size:10px;
+}
+
 #container {
 	width:1000px;
-	margin:auto;
-	margin-top:30px;
+	margin:30px auto auto;
 	border-radius:5px;
 	height:600px;
 }
-#container > table, #container > div{
-	height: 100%;
+#container > div{
+	min-height: 100%;
 }
-
 #container > table{
+	height: 100%;
 	width:100%;
 }
+
 /* ===================================
  * ============  HEADER   ============
  * =================================== */
 
-#div_header{
-	background-color:#333333;
-}
 
 #header{
-	height:100px;
 	color:white;
+	background-color:#333333;
 }
 #header td{
 	min-width:100px;
 }
+#slogan, #header_menu{
+	margin-left: 400px;
+}
+
 #header_menu{
-	/*position:absolute;
-	left:600px;*/
 	border-radius:5px;
-	margin-top:50px;
 	background-color:#EEEEEE;
 	height:30px;
+	display:table;
 }
 
 
 
-#header_menu> ul{
+#header_menu ul{
 	position:static;
 	padding:0px;
 	margin:0;
@@ -61,15 +64,15 @@ a{
 #header_menu li{
 	float:left;
 	border-left:1px solid;
+	line-height: 16px;
 }
 
 #header_menu li.first{
 	border-left:none;
 }
 
-#header_menu li>a{
+#header_menu li a{
 	display:block;
-	/*width:100%;*/
 	padding:7px;
 }
 #slogan{
@@ -94,7 +97,7 @@ a{
 	vertical-align:top;
 }
 .body_menu > ul {
-	margin-top:0;
+	margin:0;
 }
 
 .menu>ul{
@@ -107,11 +110,17 @@ a{
 
 .menu li:hover{
 	background-color:#FFF;
+	border-radius:5px;
 }
 
 .menu li > a{
 	text-decoration:none;
 	height:100%;
+}
+
+.body_menu{
+	position: relative !important;
+	
 }
 
 .body_menu li{
@@ -133,6 +142,19 @@ a{
 	padding: 5px 0;
 }
 
+.submenu{
+	display:none;
+	float:right;
+}
+.menu li:hover .submenu{
+	display:block;
+	padding:0;
+	position: absolute !important;
+	margin-left:135px;
+	border: 1px solid grey;
+	z-index:5;
+}
+
 /* ===================================
  * ===========  CONTENT   ============
  * =================================== */
@@ -144,17 +166,47 @@ a{
 	padding:20px 50px 20px 50px;
 	vertical-align:top;
 	text-align:justify;
+	font-size:14px;
 }
-
+/*
 .note, .warning{
 	font-size:1.1em;
+	font-weight: bold;
 	color:green;
 	font-style: italic;
 	border: 1px solid;
+}*/
+
+.note, .warning {
+	background: #0099CC;
+	border: 1px solid #0DB1D5;
+	box-shadow: 2px 2px 2px #CCCCCC;
+	color: #FFFFFF;
+	font-size: 1.1em;
+	padding: 5px;
 }
 
-h1, h2, h3, a{
+.note a, .warning a{
+	color: white;
+	font-weight: bold;
+}
+
+h1, a{
 	color: #0070ff;
+}
+
+h2,h3{
+	color:#333;
+}
+
+h1 {
+	font-size:1.8em;
+	border-bottom: 1px dotted grey;
+}
+
+h2{
+	font-size:1.3em;
+	border-bottom: 1px dotted grey;
 }
 
 h3 {
@@ -229,3 +281,88 @@ table.summary td, table.summary th{
 	background-color: #FFFFFF;
 	padding-bottom: 1px;
 }
+
+
+/* ===================================
+ * ==========  ANIMATIONS   ==========
+ * =================================== */
+
+
+.hux_loaded{
+	-moz-animation-name: fadein;
+	-moz-animation-duration: 1s;
+	-webkit-animation-name: fadein;
+	-webkit-animation-duration: 1s;
+}
+/*.hux_loading{
+	-moz-animation-name: fadeout;
+	-moz-animation-duration: 1s;
+	-webkit-animation-name: fadeout;
+	-webkit-animation-duration: 1s;
+}*/
+/*
+#iview.hux_loading{
+	-moz-animation-name: fadeout;
+	-moz-animation-duration: 1s;
+	-webkit-animation-name: fadeout;
+	-webkit-animation-duration: 1s;
+}
+
+ #iview.hux_loading img{
+	-moz-animation-name: slideout;
+	-moz-animation-duration: 1s;
+	-webkit-animation-name: slideout;
+	-webkit-animation-duration: 1s;
+}
+
+@-moz-keyframes fadeout {
+	from{
+		opacity:1;
+	}
+	to{
+		opacity: 0.5;
+	}
+}
+@-webkit-keyframes fadeout {
+	from{
+		opacity:1;
+	}
+	to{
+		opacity: 0.5;
+	}
+}
+
+@-moz-keyframes fadein {
+	from{
+		opacity: 0.5;
+	}
+	to{
+		opacity:1;
+	}
+}
+@-webkit-keyframes fadein {
+	from{
+		opacity: 0.5;
+	}
+	to{
+		opacity:1;
+	}
+}
+
+@-moz-keyframes slideout {
+	from{
+		-moz-transform: translate(0);
+	}
+	to{
+		-moz-transform: translate(-300px);
+	}
+}
+
+@-webkit-keyframes slideout {
+	from{
+		-moz-transform: translate(0);
+	}
+	to{
+		-moz-transform: translate(-300px);
+	}
+}*/

@@ -1,54 +1,29 @@
 <h1>At Inclusion</h1>
-<p>At Inclusion is a module that lets you to update your URL while you are loading contents. It stores pairs (named <i>At Inclusions</i>) in the URL, so the loaded contents are retrieved when using this URL.</p>
-<p>At Inclusions consists in pairs of [id]=[url] after an '@' (<i>at</i>) in an URL, for example : <br/>http://example.com/mypage.html<b>@target1=url1,target2=url2</b></p>
-
-<!-- TODO : A METTRE DANS FEATURES 
- <p>It uses the <a href="https://developer.mozilla.org/en/DOM/Manipulating_the_browser_history#Adding_and_modifying_history_entries" target="_blank">last history API (pushstate, replacestate)</a> available for Chrome 5+, Firefox 4+, Internet Explorer 10+, Opera 11.5+ and Safari 5.0+</p>
-<p>For the older browsers, you are proposed to use <a href="@content=c_features,features=hashmgr">Hash Bangs</a> coupled with <a href="">AtInclusions fallback [URL ?]</a></p>
-<p>This table compares the advantages of At Inclusion and Hash Bangs : </p>
-<table class="summary">
-	<tbody>
-		<tr>
-			<th>Advantage</th>
-			<th>At Inclusion</th>
-			<th>Hash Bangs</th>
-		</tr>
-		<tr>
-			<td>URL Update</td>
-			<td>yes</td>
-			<td>yes</td>
-		</tr>
-		<tr>
-			<td>History management (go backward/forward)</td>
-			<td>yes</td>
-			<td>yes</td>
-		</tr>
-		<tr>
-			<td>Old browsers compatibility (including IE7)</td>
-			<td>yes</td>
-			<td>yes <sup>1</sup></td>
-		</tr>
-		<tr style="font-weight:bold">
-			<td>Indexing (Google, Bing, Yahoo...)</td>
-			<td>no</td>
-			<td >yes with <a href="https://github.com/fflorent/mod_atinclusion" target="_blank">atinclusions Apache module</a> <sup>2</sup> </td>
-		</tr>
-	</tbody>
-</table>
-<p><sub>1 : needs AtInclusions fallback</sub><br/><sub>2 : still experimental</sub></p>-->
+<p>At Inclusion is a module that lets you update easily the URL of your users while they are loading new contents via XMLHttpRequests.</p>
 <h2>Setting At Inclusions</h2>
-<p>To set (or replace) At Inclusion pairs, use a link of this form : </p>
+<p>In order to make a link that sets the At Inclusion pairs, you have to write the link of this form : </p>
 <div class="sandbox">
 	&lt;a href="@target1=url1,target2=url2,..."&gt;click me&lt;/a&gt;
 </div>
+<p>As you can see : </p>
+<ul>
+	<li>you write a link (or HTML Anchor) and you do not need javascript for that</li>
+	<li>the href begins with "@" (At), followed by what we name <i>At Inclusion pairs</i> (or even <i>At Inclusions</i>)</li>
+	<li>These <i>At Inclusion pairs</i> are comma-separated</li>
+</ul>
+<p>An At Inclusion pair is composed of : </p>
+<ul>
+	<li>a <i>target</i>, which is the id of the HTML Element where the content will be loaded</li>
+	<li>an URL, which gives the content to load</li>
+</ul>
 <p>That example will unset all existing At Inclusions, replace it by "@target1=url1,target2=url2", and inject the content of <i>url1</i> into <i>target1</i>, <i>url2</i> into <i>target2</i> and so on ...</p>
 <p>Test it : </p>
 <div class="testit">
 	<div class="expected">
-		<p><a href="@container=c_tuto,tuto=t_atinclusion">@container=c_tuto,tuto=t_atinclusion</a> (resets)<br/>
-		   <a href="@container=c_tuto,tuto=t_atinclusion,div1=di_indian">@container=c_tuto,tuto=t_atinclusion,div1=di_indian</a><br/>
-		   <a href="@container=c_tuto,tuto=t_atinclusion,div2=di_night_traffic">@container=c_tuto,tuto=t_atinclusion,div2=di_night_traffic</a><br/>
-		   <a href="@container=c_tuto,tuto=t_atinclusion,div1=di_indian,div2=di_night_traffic">@container=c_tuto,tuto=t_atinclusion,div1=di_indian,div2=di_night_traffic</a> (loads both)
+		<p><a href="@container=contents/tuto.html,tuto=contents/tuto/atinclusion.html">@container=contents/tuto.html,tuto=contents/tuto/atinclusion.html</a> (resets)<br/>
+		   <a href="@container=contents/tuto.html,tuto=contents/tuto/atinclusion.html,div1=contents/demos/images/indian.html">@container=contents/tuto.html,tuto=contents/tuto/atinclusion.html,div1=contents/demos/images/indian.html</a><br/>
+		   <a href="@container=contents/tuto.html,tuto=contents/tuto/atinclusion.html,div2=contents/demos/images/night_traffic.html">@container=contents/tuto.html,tuto=contents/tuto/atinclusion.html,div2=contents/demos/images/night_traffic.html</a><br/>
+		   <a href="@container=contents/tuto.html,tuto=contents/tuto/atinclusion.html,div1=contents/demos/images/indian.html,div2=contents/demos/images/night_traffic.html">@container=contents/tuto.html,tuto=contents/tuto/atinclusion.html,div1=contents/demos/images/indian.html,div2=contents/demos/images/night_traffic.html</a> (loads both)
 		</p>
 		<div id="div1">I am #div1</div>
 		<div id="div2">I am #div2</div>
@@ -84,9 +59,9 @@
 <div class="testit">
 	<div class="expected">
 		<p><a href="@-div3,div4">@-div3,div4</a> (resets all)<br/>
-		   <a href="@+div3=di_indian">@+div3=di_indian</a><br/>
-		   <a href="@+div4=di_night_traffic">@+div4=di_night_traffic</a><br/>
-		   <a href="@+div3=di_indian,div4=di_night_traffic">@+div3=di_indian,div4=di_night_traffic</a> (loads both)
+		   <a href="@+div3=contents/demos/images/indian.html">@+div3=contents/demos/images/indian.html</a><br/>
+		   <a href="@+div4=contents/demos/images/night_traffic.html">@+div4=contents/demos/images/night_traffic.html</a><br/>
+		   <a href="@+div3=contents/demos/images/indian.html,div4=contents/demos/images/night_traffic.html">@+div3=contents/demos/images/indian.html,div4=contents/demos/images/night_traffic.html</a> (loads both)
 		</p>
 		<div id="div3">I am #div3</div>
 		<div id="div4">I am #div4</div>
@@ -96,8 +71,8 @@
 <div class="testit">
 	<div class="expected">
 		<p><a href="@-div5">@-div5</a> (resets all)<br/>
-		   <a href="@+div5=di_indian">@+div5=di_indian</a><br/>
-		   <a href="@+div5=di_night_traffic">@+div5=di_night_traffic</a>
+		   <a href="@+div5=contents/demos/images/indian.html">@+div5=contents/demos/images/indian.html</a><br/>
+		   <a href="@+div5=contents/demos/images/night_traffic.html">@+div5=contents/demos/images/night_traffic.html</a>
 		</p>
 		<div id="div5">I am #div5</div>
 	</div>

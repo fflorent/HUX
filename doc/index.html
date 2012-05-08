@@ -3,142 +3,77 @@
 	<head>
 		<title>HUX Documentation</title>
 		<link rel="stylesheet" href="styles/style.css" type="text/css" />
-		<!--<link rel="stylesheet" href="styles/transitions.css" type="text/css" />-->
 		<script src="hux.js" type="text/javascript"></script>
-		<script type="text/javascript" src="resources/audiotime.js"></script>
 		<script type="text/javascript" src="resources/slides.js"></script>
 		<script type="text/javascript" src="resources/hux_config.js"></script>
-		<script type="text/javascript">
-		(function(){
-			var showTab = function(ev){
-				var target = HUX.Compat.getEventTarget(ev), parent = target;
-				var tab2display = target.getAttribute("data-showtab");
-				while( (parent = parent.parentNode) && 
-					! /testit( |$)/.test(parent.className) );
-				if(parent){
-					var chosen = HUX.Selector.byClassName(tab2display, parent)[0],
-					    expected = HUX.Selector.byClassName("expected", parent)[0];
-					HUX.Selector.byClassName("tab", parent, function(tab){
-						tab.style.display = "none";
-					});
-					HUX.Selector.byAttribute("a", "data-showtab", parent, function(a){
-						a.className = a.className.replace(/\s*selected\s*/gi, "");
-					});
-					target.className += " selected";
-					chosen.style.display = "block";
-					if(tab2display === "result"){
-						HUX.inject(chosen, "replace", HUX.Selector.byClassName("usercodetxtarea", parent)[0].value);
-					}
-					// we change ids in expected tab, so there is no possible conflict with result tab
-					HUX.Selector.byAttribute("*", "id", expected, function(el){
-						var origId = el.id.replace(/^_+/, "");
-						// we remove any reference of that ID in At Inclusions
-						HUX.AtMgr.changeAt('@-'+origId);
-						// we change the ID
-						el.id = tab2display === "expected" ? 
-							origId : 
-							"__"+origId;
-					});
-				}
-				HUX.Compat.preventDefault(ev);
-			};
-			HUX.addLiveListener(function(context){
-				var model = document.getElementById("testit-model");
-				if(model !== null){
-					HUX.Selector.byClassName("testit", context, function(testit){
-						// do not add content twice 
-						if(HUX.Selector.byClassName("testit-menu", testit).length > 0)
-							return;
-						var menu = HUX.Selector.byClassName("testit-menu", model)[0].cloneNode(true), menuLinks, onblur, onfocus, expected;
-						HUX.Selector.byClassName("tab", model, function(tab){
-							testit.appendChild( tab.cloneNode(true) );
-						});
-						expected = HUX.Selector.byClassName("expected", context)[0];
-						testit.insertBefore(menu, testit.firstChild);
-						HUX.Compat.forEach(menu.getElementsByTagName("a"), function(a){
-							HUX.Compat.addEventListener(a, "click", showTab);
-						});
-						HUX.Selector.byClassName("expected", testit, function(divExpected){
-							divExpected.className += " sandbox tab";
-						});
-						
-					});
-				}
-			});
-		})();
-		</script>
+		<script type="text/javascript" src="resources/testit.js"></script>
 	</head>
 	<body>
-		<div id="div_header">
-			<table id="header">
+		<div id="header">
+			<div id="slogan">
+				<img width="120px" alt="logo HUX" src="styles/logo.png" />
+					<br/>Enjoy the Simplicity
+			</div>
+			<div  id="header_menu" class="menu">
+				<ul>
+					<li class="first">
+						<a href="@-container" id="homeLink">Home</a>
+					</li>
+					<li>
+						<a href="@+container=contents/download.html" id="dlLink">Download</a>
+					</li>
+					<li>
+						<a href="@+container=contents/faq.html" id="extendLink">FAQ</a>
+					</li>
+					<li>
+						<a href="@+container=contents/features.html" id="featLink">Documentation</a>
+					</li>
+					<li>
+						<a href="@+container=contents/demo.html" id="demoLink">Demos</a>
+					</li>
+					<li>
+						<a href="@+container=contents/extend.html" id="extendLink">Extend HUX</a>
+					</li>
+				</ul>
+			</div>
+		</div>
+		<div id="container" class="hux_transition">
+			<table id="welcome">
 				<tr>
-					<td colspan="4" id="logo">
-						
-					</td>
-					<td id="slogan">
-						<img width="120px" alt="logo HUX" src="styles/logo.png" />
-							<br/>Enjoy the Simplicity
-						</td>
-					</tr>
-					<tr>
-					<td>
-					</td>
-					<td>
-					</td>
-					<td>
-					</td>
-					<td>
-					</td>
-					<td id="header_menu" class="menu">
+					<td class="content">
+						<h1>HUX</h1>
+						<p class="warning">WARNING : Site under construction</p>
+						<p>HUX stands for HTTP Using XML<sup>1</sup>. It is a simple and powerful tool to : </p>
 						<ul>
-						<li class="first">
-							<a href="@-container" id="homeLink">Home</a>
-						</li>
-						<li>
-							<a href="@+container=c_download" id="dlLink">Download</a>
-						</li>
-						<li>
-							<a href="@+container=c_features" id="featLink">Features Doc</a>
-						</li>
-						<li>
-							<a href="@+container=c_demo" id="demoLink">
-								<b>Demos</b>
-							</a>
-						</li>
-						<li>
-							<a href="@+container=c_tuto" id="tutoLink">Tutorial</a>
-						</li>
-						<li>
-							<a href="@+container=c_extend" id="extendLink">Extend HUX</a>
-						</li>
-					</ul>
-				</td>
-			</tr>
-		</table>
-	</div>
-	<div id="container" class="hux_transition">
-		<table id="welcome">
-			<tr>
-				<td class="content">
-					<p>HUX is a powerful Framework, aiming at giving the simplest way to Ajaxise your website.</p>
-					<p>This website uses HUX, so you can have an idea of what it is by browsing it.</p>
-				</td>
-			</tr>
-		</table>
-	</div>
-	<div id="testit-model">
-		<ul class="testit-menu">
-			<li><a href="#" data-showtab="expected" class="selected">Expected</a></li>
-			<li><a href="#" data-showtab="usercode">Edit</a></li>
-			<li><a href="#" data-showtab="result">Result</a></li>
-		</ul>
-		<div class="usercode tab">
-			<h4>Enter HTML code here : </h4>
-			<textarea class="usercodetxtarea"></textarea>
+							<li>load contents asynchronously, using XMLHttpRequest <span style="font-size:small;">(most known as AJAX, which is merely a buzzword ;))</span></li>
+							<li>update URL and manage history</li>
+							<li>ensure your website is correctly indexed by search engines (experimental)</li>
+							<li>provide animation when loading contents (experimental; needs CSS KeyFrame Support)</li>
+							<li>submit form data without refreshing the whole page</li>
+							<li>and other things...</li>
+						</ul>
+						<p>HUX is written in JavaScript. However, in most cases, you will only have to deal with HTML.
+							<br/>Otherwise, HUX provides public methods for your JavaScripts.</p>
+						<p>And did we say that HUX is free, open-source, modular and extendable ? :)</p>
+						<p style="margin-top:50px;"><sub>1 : The name is obsolete since we use more generally markups. The name may change in the futur</sub></p>
+					</td>
+				</tr>
+			</table>
 		</div>
-		<div class="sandbox result tab">
-			
+		<!-- model for testit --> 
+		<div id="testit-model">
+			<ul class="testit-menu">
+				<li><a href="#" data-showtab="expected" class="selected">Expected</a></li>
+				<li><a href="#" data-showtab="usercode">Edit</a></li>
+				<li><a href="#" data-showtab="result">Result</a></li>
+			</ul>
+			<div class="usercode tab">
+				<h4>Enter HTML code here : </h4>
+				<textarea class="usercodetxtarea" onkeydown="keydownEdit(event, this);"></textarea>
+			</div>
+			<div class="sandbox result tab">
+				
+			</div>
 		</div>
-	</div>
 	</body>
 </html>

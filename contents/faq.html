@@ -1,0 +1,29 @@
+<div class="content">
+	<h1>Frequently Asked Questions</h1>
+	<h2>HUX</h2>
+	<h3>What is HUX</h3>
+	<p>See <a href="@-container">home page</a></p>
+	<h3>How is structured HUX ?</h3>
+	<p>HUX is composed of a core and modules.</p>
+	<p>A module gives a feature, and relies on the core to do common treatments (Requests, content injection, element selection, etc.), or sometimes on other modules</p>
+	<p>Examples of modules : </p>
+	<ul>
+		<li>At Inclusion</li>
+		<li>form.hux.js</li>
+		<li>Simple loader</li>
+		<li>...</li>
+	</ul>
+	<h3>Why this structure ?</h3>
+	<p>HUX modules must analyse the document to react on user action. Although HUX is tried to be light, having too many modules that are not used can make a website heavier uselessly.</p>
+	<p>Moreover, making HUX modular is a way to let other developpers create their own modules to add new features</p>
+	<h2>At Inclusion</h2>
+	<h3>Why At Inclusion? Why not only Hash Bang?</h3>
+	<p>The answer is quite simple : hashes aim at scrolling to a part of a document, whereas At Inclusion aims at making inclusions in the document.</p>
+	<p>The last point means that inclusions can be made client-side and server-side (for indexing), thing that Hash Bang cannot provide since hashes are not sent to the server (normally).</p>
+	<p>That is the reason why At Inclusion is recommended to be used, whereas Hash Bang is provided as a fallback for browsers which do not support the first.</p>
+	<p></p>
+	<h3>Google already gives a solution to index ajaxised websites</h3>
+	<p><a href="https://developers.google.com/webmasters/ajax-crawling/" target="_blank">Yes</a>. However, that solution is more complicated than At Inclusion.</p>
+	<p>It requires that you manage <a href="https://developers.google.com/webmasters/ajax-crawling/docs/html-snapshot" target="_blank">snapshots</a> for crawlers. And not all the crawlers support this (Google and Bing for now).</p>
+	<p>With At Inclusion, you have the warranty that the content is sent to any crawlers, and even browsers whose JavaScript is disabled. And an Apache Module manages to give the correct content, so the only thing you have to do server-side is to configure it.</p>
+</div>

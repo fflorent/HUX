@@ -1,0 +1,52 @@
+<table>
+	<tr>
+		<td id="menu" class="menu body_menu">
+			<p class="menu_title">Tutorials</p>
+			<ul>
+				<li><a href="@-tuto">Simple Load</a></li>
+				<li><a href="@+tuto=contents/tuto/atinclusion.html">Load with At Inclusions</a></li>
+				<li><a href="@+tuto=contents/tuto/hashbang.html">Load with Hash Bangs (#!)</a></li>
+			</ul>
+		</td>
+		<td class="content">
+			<div id="tuto">
+				<p class="note">Before beginning to learn how to use HUX, you need to have a basic knowledge of HTML. <br/>If you do, that should be fine =)</p>
+				<p>As a first step 
+				<h1>Simple HUX Request</h1>
+				<p>SimpleLoad is a module that lets you do simple requests and update your page with the loaded content.</p>
+				
+				<p>As a first HUX request, we will do this : </p>
+				<div class="sandbox">
+					<p><a href="resources/hello_world.html" data-hux-target="HUXdiv1">Say Hello!</a></p>
+					<div id="HUXdiv1">...</div>
+				</div>
+				<p>Lets take a look at the code : </p>
+				<div class="code">
+					<code>
+						1. &lt;p&gt;&lt;a href="resources/hello_world.html" data-hux-target="HUXdiv1"&gt;Say Hello!&lt;/a&gt;&lt;/p&gt;<br/>
+						2. &lt;div id="HUXdiv1"&gt;...&lt;/div&gt;
+					</code>
+				</div>
+				<p>We have got : </p>
+				<ol>
+					<li>a link &lt;a&gt; with an <i>href</i> attribute and another attribute <i>data-hux-target</i>, which is specifique to HUX.<br/>
+					</li>
+					<li>the target element, where the content will be injected.</li>
+				</ol>
+				<p>The <i>data-hux-target</i> attribute indicates the target where HUX must inject the content. <br/>
+				   In our case, we say to HUX "when user click on the link, inject the content of <i>resources/hello_world.html</i> in the element whose ID is <i>HUXdiv1</i>.</p>
+				<p class="note">NOTE : You can also use <a href="@+tuto=filling">filling</a> methods with SimpleLoad</p>
+				<p>To test a simple load request, try to reproduce that example : </p>
+				<div class="testit">
+					<div class="expected">
+						<p><a href="contents/demos/images/indian.html" data-hux-target="HUXdiv2">Load "contents/demos/images/indian.html"</a> - 
+							<a href="contents/demos/images/night_traffic.html" data-hux-target="HUXdiv2">Load "contents/demos/images/night_traffic.html"</a></p>
+						<div id="HUXdiv2" />
+					</div>
+				</div>
+			</div>
+		</td>
+	</tr>
+</table>
+
+

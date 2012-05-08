@@ -1,0 +1,69 @@
+<h1>At Inclusion</h1>
+<p class="warning">Warning : At Inclusion requires Firefox 4+, Chrome 5+, Opera 11.50+, and Safari5+
+		<br/>To support other browsers/versions, you are recommended to use <a href="@+feature=contents/features/atinclusionfb.html">At Inclusion Fallback</a></p>
+<p class="warning">This module is still experimental. See <a href="#known_bugs">known bugs</a></p>
+<p>At Inclusion is a module for HUX that manages history and updates URL as the user loads contents.</p>
+<p>By updating URL, At Inclusion ensures that the loaded contents are retrieved when the page is refreshed, or if the URL is shared with someone else.</p>
+<p>By managing history, At Inclusion lets the user click on "Back"/"Next" button of their browser to navigate through the history.</p>
+<h2><a name="differences_with_hash_bang"></a>Differences with Hash Bang</h2>
+<p>At Inclusion uses the <a href="https://developer.mozilla.org/en/DOM/Manipulating_the_browser_history#Adding_and_modifying_history_entries" target="_blank">last history API (pushstate, replacestate)</a> available for Chrome 5+, Firefox 4+, Internet Explorer 10+, Opera 11.5+ and Safari 5.0+</p>
+<p>For the older browsers, you are proposed to use <a href="@+feature=contents/features/hashmgr.html">Hash Bang</a> coupled with <a href="@+feature=contents/features/atinclusionfb.html">AtInclusions fallback</a></p>
+<p>This table compares the advantages of At Inclusion and Hash Bang : </p>
+<table class="summary" style="text-align:left">
+	<tbody>
+		<tr>
+			<th>Advantage</th>
+			<th>Hash Bang</th>
+			<th>At Inclusion</th>
+		</tr>
+		<tr>
+			<td>URL Update</td>
+			<td>yes</td>
+			<td>yes</td>
+		</tr>
+		<tr>
+			<td>History management (go backward/forward)</td>
+			<td>yes</td>
+			<td>yes</td>
+		</tr>
+		<tr>
+			<td>Old browsers compatibility (including IE7)</td>
+			<td>yes</td>
+			<td>yes <sup>1</sup></td>
+		</tr>
+		<tr style="font-weight:bold">
+			<td>Indexing (Google, Bing, Yahoo...)</td>
+			<td>no</td>
+			<td>yes with <a href="https://github.com/fflorent/mod_atinclusion" target="_blank">atinclusions Apache module</a> <sup>2</sup> </td>
+		</tr>
+	</tbody>
+</table>
+<p><sub>1 : needs <a href="@+feature=contents/features/atinclusionfb.html">At Inclusion Fallback</a> and <a href="@+feature=contents/features/hashmgr.html">Hash Bang</a></sub><br/>
+   <sub>2 : still experimental</sub></p>
+<br/>
+<p>If you need to <i>Ajaxise</i> your website, but you also want to index it, you are highly recommended to use At Inclusion with <a href="@+feature=contents/features/atinclusionfb.html">At Inclusion Fallback</a> for older browsers.</p>
+<p>If you use your website for a specific browser, for example in an intranet, you can consider using either At Inclusion or <a href="@+feature=contents/features/hashmgr.html">Hash Bang</a>, depending on the compatibilities.</p>
+<!--<h2>Example of use</h2>
+
+<h3>Example 1</h3>
+<h4>Code :</h4>
+<div class="code">
+	<code>
+		&lt;a href="@+ex_um_target1=resources/hello_world.html"&gt;click to run Example 1&lt;/a&gt;<br/>
+		&lt;div id="ex_um_target1"&gt;I will disapear...&lt;/div&gt;
+	</code>
+</div>
+<h4>Rendering :</h4>
+<div class="rendering">
+	<a href="@+ex_um_target1=resources/example_atinclusion.html">click to run Example 1</a>
+	<div id="ex_um_target1">I will disapear...</div>
+</div>-->
+
+<h2><a name="known_bugs"></a>Known Bugs</h2>
+<p>We can consider the fact that letting the user load contents in any target as a security issue, even though that contents are provided by HTML pages hosted in the same server.</p>
+<p>Until a solution is provided, you are recommended not to use <a href="@+feature=contents/features/hashmgr.html">Hash Bang</a> nor <a href="@+feature=contents/features/atinclusion.html">At Inclusion</a> except for test purposes 
+	and with pages hosted by a test server.</p>
+<h2>Features in project</h2>
+<ul>
+	<li>Compatibility with Crawlers and browsers having javascript disabled (by using an apache module)</li>
+</ul>

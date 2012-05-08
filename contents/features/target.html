@@ -1,0 +1,29 @@
+<h1>Target</h1>
+<p><span class="hux-attribute">data-hux-target</span> is an attribute that specifies the <span class="attribute">ID</span> of the target element of the HUX request.</p>
+<p>This target element will be injected the loaded content according to the <span class="hux-attribute"><a href="@feature=contents/features/filling.html">filling</a></span> method.</p>
+<h2>Feature description</h2>
+<table class="summary">
+	<tr>
+		<td>Type</td>
+		<td>Attribute</td>
+	</tr>
+	<tr>
+		<td>Attribute of</td>
+		<td>A, FORM elements</td>
+	</tr>
+	<tr>
+		<td>Possible values</td>
+		<td>The ID of any element in the BODY of the HTML Document</td>
+	</tr>
+</table>
+<h2>Examples</h2>
+<h4>Code : </h4>
+<div class="code">
+	<code>
+		&lt;a href="resources/hello_world.html" data-hux-target="ex_target_target1"&gt;click here to run the Example&lt;/a&gt;<br/>
+		&lt;div id="ex_target_target1"&gt;I will disapear...&lt;/div&gt;
+	</code>
+</div>
+<h4>Rendering : </h4>
+<a href="resources/hello_world.html" data-hux-target="ex_target_target1">click here to run the Example</a>
+<div id="ex_target_target1">I will disapear...</div>

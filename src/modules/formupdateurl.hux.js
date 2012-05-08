@@ -33,11 +33,11 @@ HUX.FormUpdateUrl = {
 		else
 			throw "HUX.Form.updateUrl : first argument must be either an id string or an HTML element";
 		var sPair = "+"+target+"="+url;
-		if(HUX.AtMgr !== undefined && HUX.AtMgr.enabled){
-			HUX.AtMgr.changeAt( sPair );
+		if(HUX.AtInclusion !== undefined && HUX.AtInclusion.enabled){
+			HUX.AtInclusion.changeAt( sPair );
 		}
-		else if(HUX.HashMgr !== undefined && HUX.HashMgr.enabled){
-			HUX.HashMgr.updateHash( "#!"+sPair );
+		else if(HUX.HashBang !== undefined && HUX.HashBang.enabled){
+			HUX.HashBang.updateHash( "#!"+sPair );
 		}
 		
 	}

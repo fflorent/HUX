@@ -36,7 +36,7 @@ HUX.SimpleLoader = (function(){
 		*/
 		onclick: function(ev){
 			try{
-				var srcElement = HUX.Compat.getEventTarget(ev) ;
+				var srcElement = HUX.Compat.Event.getEventTarget(ev) ;
 				var opt = {
 					data:null,
 					url:srcElement.href,
@@ -46,14 +46,14 @@ HUX.SimpleLoader = (function(){
 					target:HUX.HUXattr.getTarget(srcElement)
 				};
 				HUX.xhr(opt);
-				HUX.Compat.preventDefault(ev);
+				HUX.Compat.Event.preventDefault(ev);
 			}
 			catch(ex){
 				HUX.logError(ex);
 			}
 		},
 		fnEach: function(el){
-			HUX.Compat.addEventListener(el, "click", inner.onclick );
+			HUX.Compat.Event.addEventListener(el, "click", inner.onclick );
 		}
 	};
 	var pub = {

@@ -61,13 +61,13 @@ HUX.Form = {
 	listen: function(context){
 		// we look for elements having the target attribute (to send and inject the content) 
 		// or the sendonly attribute (to send the data only)
-		HUX.Compat.forEach(["target", "sendonly"], function(searchedAttr){
+		HUX.Compat.Array.forEach(["target", "sendonly"], function(searchedAttr){
 			HUX.Selector.byAttributeHUX("form", searchedAttr, context, function(el){
 				// when submitting, we trigger HUX.Form.onSubmit 
-				HUX.Compat.addEventListener(el, "submit", function(ev){
-					var form = HUX.Compat.getEventTarget(ev);
+				HUX.Compat.Event.addEventListener(el, "submit", function(ev){
+					var form = HUX.Compat.Event.getEventTarget(ev);
 					HUX.Form.submit(form);
-					HUX.Compat.preventDefault(ev);
+					HUX.Compat.Event.preventDefault(ev);
 				});
 			});
 		});
@@ -122,8 +122,7 @@ HUX.Form = {
 					method:form.getAttribute("method"),
 					async:HUX.Form.async,
 					filling:HUX.HUXattr.getFillingMethod(form) || HUX.Form.defaultFilling,
-					target:HUX.HUXattr.getTarget(form) || undefined/*, // 
-					srcElement:form // ????*/
+					target:HUX.HUXattr.getTarget(form) || undefined
 				};
 				// we fill arrData : 
 				HUX.Selector.byAttribute("*", "name", form, function(el){

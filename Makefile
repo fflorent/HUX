@@ -3,9 +3,9 @@ HUX_JS=$(ROOT)/hux.js
 SRC=$(ROOT)/src
 MODULES=$(SRC)/modules
 CORE=$(SRC)/core/core.hux.js
-CCAT_MOD= @@cat $(MODULES)/$(1).hux.js >> $(HUX_JS);
+CCAT_MOD= @@cat $(MODULES)/$(1).hux.js >> $(HUX_JS); echo "" >> $(HUX_JS);
 
-all: core simpleloader hashmgr hashmgr4indexing form stageclassmgr overlay atmgr atmgrfallback formupdateurl xhtmlsupport# scriptinjecter transition 
+all: core simpleloader hashbang form stageclassmgr atinclusion atinclusionfallback formupdateurl xhtmlsupport scriptinjecter#animation  hashbang4indexing overlay transition  
 	@@echo "generation done";
 all-dev: all checker
 
@@ -15,13 +15,13 @@ core: init
 	@@cat $(CORE) >> $(HUX_JS); 
 simpleloader: core
 	$(call CCAT_MOD,simpleloader)
-hashmgr: pairmgr contentsynchronizer core
-	$(call CCAT_MOD,hashmgr)
-hashmgr4indexing: hashmgr
-	$(call CCAT_MOD,hashmgr4indexing)
+hashbang: pairmgr contentmanager core
+	$(call CCAT_MOD,hashbang)
+hashbang4indexing: hashbang
+	$(call CCAT_MOD,hashbang4indexing)
 form:	core
 	$(call CCAT_MOD,form)
-formupdateurl: form hashmgr atmgr
+formupdateurl: form hashbang atinclusion
 	$(call CCAT_MOD,formupdateurl)
 scriptinjecter: core
 	$(call CCAT_MOD,scriptinjecter)
@@ -29,16 +29,18 @@ stageclassmgr: core
 	$(call CCAT_MOD,stageclassmgr)
 overlay: core
 	$(call CCAT_MOD,overlay)
-atmgr:  pairmgr contentsynchronizer core
-	$(call CCAT_MOD,atmgr)
+atinclusion:  pairmgr contentmanager core
+	$(call CCAT_MOD,atinclusion)
 pairmgr: core
 	$(call CCAT_MOD,pairmgr)
-contentsynchronizer: core
-	$(call CCAT_MOD,contentsynchronizer)
-transition: stageclassmgr
+contentmanager: core
+	$(call CCAT_MOD,contentmanager)
+transition: core stageclassmgr
 	$(call CCAT_MOD,transition)
-atmgrfallback: atmgr hashmgr
-	$(call CCAT_MOD,atmgrfallback)
+animation: core stageclassmgr
+	$(call CCAT_MOD,animation)
+atinclusionfallback: atinclusion hashbang
+	$(call CCAT_MOD,atinclusionfallback)
 xhtmlsupport: core
 	$(call CCAT_MOD,xhtmlsupport)
 # needs improvement

@@ -31,13 +31,24 @@
 
 HUX.ScriptInjecter = {
 	head:document.getElementsByTagName("head")[0],
+	// enabled by default. See <init>
+	enabled: true,
 	asyn: false,
 	/**
 	 * Function : init
 	 * inits the module
 	 */
 	init: function(){
-		HUX.HUXEvents.bindGlobal("afterInject", this.searchScripts);
+		// we detect if scripts are natively executed
+		// if they are, we disable the module
+		var script = HUX.Inject.htmltodom("<script>HUX.ScriptInjecter.enabled = false;</script>", document.body).childNodes[0];
+		if(script){
+			HUX.ScriptInjecter.head.appendChild( script );
+			HUX.ScriptInjecter.head.removeChild( script );
+		}
+		// if enabled, we listen to "afterInject" event : 
+		if( this.enabled )
+			HUX.HUXEvents.bindGlobal("afterInject", this.searchScripts);
 	},
 	/**
 	 * Function: searchScripts
@@ -49,12 +60,12 @@ HUX.ScriptInjecter = {
 	searchScripts: function(ev){
 		try{
 			var scripts = [];
-			var toArray = Array.prototype.slice;
-			HUX.Compat.forEach(ev.children, function(child){
+			// we get the scripts that have been inserted
+			HUX.Compat.Array.forEach(ev.children, function(child){
 				if(child.tagName === "SCRIPT")
 					scripts.push(child);
 				else if(child.nodeType === 1)
-					scripts.push.apply(scripts, HUX.toArray(child.getElementsByTagName("script")));
+					scripts.push.apply(scripts, child.getElementsByTagName("script"));
 			});
 			HUX.ScriptInjecter.exec.call(HUX.ScriptInjecter, scripts);
 		}
@@ -134,7 +145,6 @@ HUX.ScriptInjecter = {
 		if(this.asyn)
 			this.exec( aScripts );
 	}
-	
 };
 
 HUX.addModule( HUX.ScriptInjecter );

@@ -22,14 +22,13 @@
 
 //stageclassmgr.hux.js
 
-(function(){
-	var hscm ;// alias, stands for Hux Stage Class Manager
+/**
+ * Namespace: HUX.StageClassMgr
+ * changes the class of the target at each stage of the load
+ */
+HUX.StageClassMgr = (function(){
 	
-	/**
-	 * Namespace: HUX.StageClassMgr
-	 * changes the class of the target at each stage of the load
-	 */
-	HUX.StageClassMgr = hscm = {
+	var inner =  {
 		// regular expression for erasing stage classes
 		reErase: null,
 		/**
@@ -38,7 +37,6 @@
 		 */
 		classNames:{
 			/* map : [event] : [className] */
-			"prepareLoading":"hux_initLoading",
 			"loading":"hux_loading",
 			"requestError":"hux_error",
 			"beforeInject":"hux_initLoaded",
@@ -51,7 +49,7 @@
 		init: function(){
 			var evName, tabClasses = [];
 			for(evName in this.classNames){
-				HUX.HUXEvents.bindGlobal(evName, hscm.eventHandler);
+				HUX.HUXEvents.bindGlobal(evName, inner.eventHandler);
 			}
 			for(var c in this.classNames)
 				tabClasses.push(this.classNames[c]);
@@ -69,10 +67,13 @@
 		 * 	- *ev* : {HUX Event Object}
 		 */
 		eventHandler: function(ev, callback){
-			var timeout = 0;
-			var target = ev.target || document.body;
-			hscm.setHuxClassName(target, ev.type);
-		},
+			var target = ev.target;
+			if(target) // target !== undefined && target !== null
+				pub.setHuxClassName(target, ev.type);
+		}
+	};
+	var pub = {
+		inner:inner,
 		/**
 		 * Function: setHuxClassName
 		 * modifies the class name of a target. Removes any class names previously added by this function.
@@ -82,8 +83,9 @@
 		 * 	- *evName* : {String} the event name. 
 		 */
 		setHuxClassName: function(el, evName){
-			el.className = hscm.classNames[evName] + " " + el.className.replace(hscm.reErase, ""); // we push the new className and erase any old HUX class Name 
+			el.className = inner.classNames[evName] + " " + el.className.replace(inner.reErase, ""); // we push the new className and erase any old HUX class Name 
 		}
-	};
-	hscm.init(); // we launch the module directly
+	}
+	inner.init(); // we launch the module directly
+	return pub;
 })();

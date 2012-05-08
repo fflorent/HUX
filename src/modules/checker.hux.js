@@ -44,7 +44,7 @@ HUX.Checker = {
 	/* check the id of target attributes and the id given in href attributes */
 	check_targets: function(){
 		var targets = this.__get_targets();
-		HUX.Compat.forEach(targets, function(targ){
+		HUX.Compat.Array.forEach(targets, function(targ){
 			if( document.getElementById(targ) === null){
 				this.logError("No Element of id=\""+targ+"\" found");
 			}

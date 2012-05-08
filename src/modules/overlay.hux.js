@@ -27,9 +27,9 @@
 
 
 // we add a new Filling method
-HUX.Inject.setFillingMethod("overlay", function(DOMContent){
+/*HUX.Inject.setFillingMethod("overlay", function(DOMContent){
 	return HUX.Overlay.proceed.call(HUX.Overlay, DOMContent );
-}, false);
+}, false);*/
 
 
 
@@ -62,7 +62,7 @@ HUX.Overlay = {
 			if(docOvl.documentElement.tagName.toLowerCase() !== this.__rootTagName)
 				throw new TypeError("wrong overlay document passed in HUX.Overlay.proceed");
 			var childNodes = docOvl.documentElement.childNodes;
-			HUX.Compat.forEach(childNodes, function(el){
+			HUX.Compat.Array.forEach(childNodes, function(el){
 				if(el.nodeType === document.ELEMENT_NODE){ // only treat element nodes
 					HUX.Overlay.treatOvlChild( el );
 				}
@@ -89,7 +89,7 @@ HUX.Overlay = {
 			// first we filter with the className
 			nodelist = context.getElementsByClassName( className );
 			// second we filter with the tagName
-			HUX.Compat.forEach(nodelist, function(e){
+			HUX.Compat.Array.forEach(nodelist, function(e){
 				if(e.tagName.toLowerCase() === tagName.toLowerCase())
 					ret.push( e );
 			});
@@ -218,7 +218,7 @@ HUX.Overlay = {
 	},
 	
 	prependContent: function(targets, toAppend){
-		HUX.Compat.forEach(targets, function( target ){
+		HUX.Compat.Array.forEach(targets, function( target ){
 			if(target.firstChild) // if there is at least one child node
 				target.insertBefore( toAppend.cloneNode(true), target.firstChild );
 			else // otherwise, we append
@@ -274,7 +274,7 @@ HUX.Overlay = {
 			else
 				this.appendContent( foundElts, toAdd);
 			var self = this;
-			HUX.Compat.forEach(foundElts, function(target){
+			HUX.Compat.Array.forEach(foundElts, function(target){
 				self.mergeAttributes( target, el );
 			});
 			el = toPosition = toAdd = null;

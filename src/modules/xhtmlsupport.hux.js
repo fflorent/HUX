@@ -137,7 +137,7 @@ HUX.XHTMLSupport = (function(){
 		var xpath, prefixedTN, sAttrXP, ieRet = [];
 		prefixedTN = pub.prefixTagName(tagName);
 		if(document.evaluate !== undefined){
-			var resSplit = HUX.Selector.splitAttrSel(attrSel),
+			var resSplit = HUX.Selector.inner.splitAttrSel(attrSel),
 			    attrName = HUX.HUXattr.getAttrPrefix(resSplit.attrName),
 			    attrVal = resSplit.attrVal,
 			    sAttrXP = ( oMapAttrValue[resSplit.op] )(attrName, attrVal);

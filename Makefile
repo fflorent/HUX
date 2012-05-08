@@ -5,7 +5,7 @@ MODULES=$(SRC)/modules
 CORE=$(SRC)/core/core.hux.js
 CCAT_MOD= @@cat $(MODULES)/$(1).hux.js >> $(HUX_JS); echo "" >> $(HUX_JS);
 
-all: core simpleloader hashbang form stageclassmgr atinclusion atinclusionfallback formupdateurl xhtmlsupport scriptinjecter#animation  hashbang4indexing overlay transition  
+all: core simpleloader hashbang form stageclassmgr atinclusion atinclusionfallback formupdateurl xhtmlsupport scriptinjecter#overlay animation  
 	@@echo "generation done";
 all-dev: all checker
 
@@ -35,8 +35,6 @@ pairmgr: core
 	$(call CCAT_MOD,pairmgr)
 contentmanager: core
 	$(call CCAT_MOD,contentmanager)
-transition: core stageclassmgr
-	$(call CCAT_MOD,transition)
 animation: core stageclassmgr
 	$(call CCAT_MOD,animation)
 atinclusionfallback: atinclusion hashbang

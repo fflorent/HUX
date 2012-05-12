@@ -1,0 +1,26 @@
+<h1>The Form Module</h1>
+<p>When the user submit a form in your website, the Form Module lets you update your page with the content returned by the server</p>
+<p>The most eloquent example is when submitting a comment to an article. In most cases, client side, you just want to append the submitted comment in the comments list, and not reload the entire webpage. <br/>That is one of the use case the Form Module provide a solution for.</p>
+<h2>How to use it</h2>
+<p>Its use is quite similar to <a href="@+feature=contents/features/simpleload.html">Simple Load</a>. 
+	<br/>You have to create a form as you usually do, and then add <i>data-hux-target</i> and <i>data-hux-filling</i> attributes to the &lt;FORM&gt; element. <br/>
+	So it has this form : </p>
+<p class="code" id="code">
+	&lt;form method="[GET|POST]" action="<i>URL</i>" data-hux-target="<i>target_id</i>" <br/>
+		<span class="tabul"></span>data-hux-filling="[replace|prepend|append]"&gt;<br/>
+			<span class="tabul"></span><span class="tabul"></span>&lt;!-- INPUTS HERE --&gt;<br/>
+	&lt;/form&gt;
+</p>
+<p>Where : </p>
+<ul>
+	<li><i>URL</i> is the URL you submit data to. NOTE : cross-domain requests are not supported yet;</li>
+	<li><i>target_id</i> is the id of the target element, which will receive the content of what returns the server:</li>
+</ul>
+<p>The filling method can be : </p>
+<ul>
+	<li>"replace" to replace the content of the target element</li>
+	<li>"append" to append the loaded content in the target element</li>
+	<li>"prepend" to prepend the loaded content in the target element</li>
+</ul>
+<h2>Test it</h2>
+<p class="note">Examples coming soon.</p>

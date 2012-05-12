@@ -1,0 +1,45 @@
+<h1>Simple Load</h1>
+<p>Simple load is a light module to create links that loads remote content. So there is no URL update, no history management.</p>
+<h2>How to use it</h2>
+<p>The link using Simple Load must have this form at a minimum : </p>
+<p class="code">&lt;a href="<i>url</i>" data-hux-target="<i>target_id</i>"&gt;Link text&lt;/a&gt;</p>
+<p>Where : </p>
+<ul>
+	<li><i>target_id</i> is the ID of the target element (i.e. the one which will receive the content)</li>
+	<li><i>url</i> is the URL of the content to load</li>
+</ul>
+<p>By default, Simple Load replaces the content of the target element. However, you can also specify the filling method with <i>data-hux-filling</i> attribute : </p>
+<p class="code">&lt;a href="<i>url</i>" data-hux-target="<i>target_id</i>" <span class="emphasis">data-hux-filling="[replace|append|prepend]"</span>&gt;Link text&lt;/a&gt;</p>
+<p>The possible values for data-hux-filling are : </p>
+<ul>
+	<li>"replace" to replace the content of the target element</li>
+	<li>"append" to append the loaded content in the target element</li>
+	<li>"prepend" to prepend the loaded content in the target element</li>
+</ul>
+<h2>Test it</h2>
+<h3>Replacement</h3>
+<div class="testit">
+	<div class="expected">
+		<p><a href="resources/hello_world.html" data-hux-target="div1">Load resources/hello_world.html in #div1</a></p>
+		<p><a href="resources/how_are_you.html" data-hux-target="div1">Load resources/how_are_you.html in #div1</a></p>
+		<div id="div1">I am #div1</div>
+	</div>
+</div>
+
+<h3>Append</h3>
+<div class="testit">
+	<div class="expected">
+		<p><a href="resources/hello_world.html" data-hux-target="div2" data-hux-filling="append">Append content of resources/hello_world.html in #div2</a></p>
+		<p><a href="resources/how_are_you.html" data-hux-target="div2" data-hux-filling="append">Append content of resources/how_are_you.html in #div2</a></p>
+		<div id="div2"><p>I am #div2, and I will survive !</p></div>
+	</div>
+</div>
+
+<h3>Prepend</h3>
+<div class="testit">
+	<div class="expected">
+		<p><a href="resources/hello_world.html" data-hux-target="div3" data-hux-filling="prepend">Prepend content of resources/hello_world.html in #div3</a></p>
+		<p><a href="resources/how_are_you.html" data-hux-target="div3" data-hux-filling="prepend">Prepend content of resources/how_are_you.html in #div3</a></p>
+		<div id="div3"><p>I am #div1, and I will survive !</p></div>
+	</div>
+</div>

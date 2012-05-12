@@ -1,5 +1,13 @@
-<h1>At Inclusion</h1>
-<p>At Inclusion is a module that lets you update easily the URL of your users while they are loading new contents via XMLHttpRequests.</p>
+<h1>At Inclusion : How to use it?</h1>
+<p>In this section, we will learn how to use <a href="@+feature=contents/features/atinclusion.html">At Inclusion</a>. <br/>Once you understand that, you will also be able to use <a href="@+feature=contents/features/hashbang.html">Hash Bang</a>, whose principle is highly similar.</p>
+<p class="warning" id="not_supported_warning" style="display:none">WARNING : You seem to use a browser that do not support At Inclusion. 
+	<br/>That is not dramatic. However, the links that you will be given or that you will create to test will be converted to <a href="@+feature=contents/features/hashbang.html">Hash Bang ones</a>
+</p>
+<script type="text/javascript">
+	if(history.pushState === undefined){
+		document.getElementById("not_supported_warning").style.display = "block";
+	}
+</script>
 <h2>Setting At Inclusions</h2>
 <p>In order to make a link that sets the At Inclusion pairs, you have to write the link of this form : </p>
 <div class="sandbox">
@@ -16,8 +24,8 @@
 	<li>a <i>target</i>, which is the id of the HTML Element where the content will be loaded</li>
 	<li>an URL, which gives the content to load</li>
 </ul>
-<p>That example will unset all existing At Inclusions, replace it by "@target1=url1,target2=url2", and inject the content of <i>url1</i> into <i>target1</i>, <i>url2</i> into <i>target2</i> and so on ...</p>
-<p>Test it : </p>
+<p>The example given above unsets all existing At Inclusions, replaces it by "@target1=url1,target2=url2...", and injects the content of <i>url1</i> into <i>target1</i>, <i>url2</i> into <i>target2</i> and so on ...</p>
+<p>Now, you are proposed to test it by your own : </p>
 <div class="testit">
 	<div class="expected">
 		<p><a href="@container=contents/features.html,feature=contents/features/atinclusion_howto.html">@container=contents/features.html,feature=contents/features/atinclusion_howto.html</a> (resets)<br/>
@@ -29,7 +37,7 @@
 		<div id="div2">I am #div2</div>
 	</div>
 </div>
-<h2>Operations with At Inclusions</h2>
+<h2 id="operations">Operations with At Inclusions</h2>
 <p>Precedently, we had to rewrite the current At Inclusions string for each links.<br/>
    Fortunately, At Inclusions operations (additions or deletions) can be used by the same way we use relative paths for links</p>
 <h3>Adding At Inclusions</h3>
@@ -77,7 +85,7 @@
 		<div id="div5">I am #div5</div>
 	</div>
 </div>
-<h2>Dealing with nested At Inclusions</h2>
+<h2 id="nested">Dealing with nested At Inclusions</h2>
 <p>One problem may appear to your eyes : how to load a content (let's name it <i>A</i>) and load another content <i>B</i> which has to be injected in <i>A</i> ?</p>
 <p>The At Inclusion module has made the answer simple : if you have a sub-content which depends to a parent-content, the parent-content must be set before the sub-content in the At Inclusions string.</p>
 <p>For example, suppose we have : </p>

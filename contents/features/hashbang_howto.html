@@ -1,0 +1,19 @@
+<h1>Hash Bang : How to use it ?</h1>
+<p>The use of Hash Bang is very similar to <a href="@+feature=contents/features/atinclusion_howto.html">At Inclusion</a>, except that : </p>
+<ol>
+	<li>links do not begin with @ but with # (<i>hash</i>)</li>
+	<li>each target must be preceded by a ! (<i>bang</i>)</li>
+</ol>
+<p>For example : </p>
+<p class="code">&lt;a href="<span class="emphasis">@</span>target1=url1,target2=url2"&gt;link text&lt;/a&gt;</p>
+<p>has for Hash Bang equivalent : </p>
+<p class="code">&lt;a href="<span class="emphasis">#!</span>target1=url1,<span class="emphasis">!</span>target2=url2"&gt;link text&lt;/a&gt; </p>
+<h2>Setting Hash Bangs</h2>
+<p>Example : </p>
+<p class="code">&lt;a href="<span class="emphasis">#!</span>target1=url1,<span class="emphasis">!</span>target2=url2"&gt;link text&lt;/a&gt; </p>
+<h2>Using operations</h2>
+<p>To add a new Hash Bang pair, use a plus (+) after the bang (!): </p>
+<p class="code">&lt;a href="#!<span class="emphasis">+</span>target1=url1"&gt;link text&lt;/a&gt; </p>
+<p>To remove a pair (and reset the default content for the target), use a minus (-) after the bang (!) : </p>
+<p class="code">&lt;a href="#!<span class="emphasis">-</span>target1"&gt;link text&lt;/a&gt; </p>
+<p>For a detailed How To, look at the <a href="@+feature=contents/features/atinclusion_howto.html#operations">At Inclusion documentation, "Operations with At Inclusions" section</a>

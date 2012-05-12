@@ -1,0 +1,14 @@
+<p id="content1">Content</p>
+<script type="text/javascript">
+	var pContent = document.getElementById("content1"), new_content = window.prompt("change the content", "");
+	if(pContent.textContent !== undefined)
+		pContent.textContent = new_content;
+	else
+		pContent.innerText = new_content;
+</script>
+<script type="text/javascript">
+	var colors = ["red", "blue", "green", "purple", "indigo"], rand = Math.floor(Math.random() * colors.length, 0);
+	pContent.style.color = colors[rand];
+	alert("the second script changes its color to "+colors[rand]+" :)");
+</script>
+	

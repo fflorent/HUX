@@ -52,6 +52,7 @@ sub, sup{
 	background-color:#EEEEEE;
 	height:30px;
 	display:table;
+	max-width: 520px;
 }
 
 
@@ -168,14 +169,10 @@ sub, sup{
 	text-align:justify;
 	font-size:14px;
 }
-/*
-.note, .warning{
-	font-size:1.1em;
-	font-weight: bold;
-	color:green;
-	font-style: italic;
-	border: 1px solid;
-}*/
+
+table .content{
+	max-width:60%;
+}
 
 .note, .warning {
 	background: #0099CC;
@@ -219,6 +216,11 @@ h3 {
 	font-size: 12px;
 	border-radius:3px;
 	border:1px solid;
+	text-align: left;
+}
+
+.tabul{
+	margin-left: 40px;
 }
 .code{
 	background-color:#FFFFDD;
@@ -226,6 +228,12 @@ h3 {
 
 .rendering{
 	background-color:#FFDDFF;
+}
+
+.emphasis {
+	font-size: 1.2em;
+	font-weight:bold;
+	font-style: italic;
 }
 
 /* ===================================
@@ -260,6 +268,12 @@ table.summary td, table.summary th{
 #testit-model, .result, .usercode{
 	display:none;
 }
+
+.result, .expected {
+	word-wrap:break-word;
+	max-width:730px;
+}
+
 .testit-menu{
 	margin-bottom: 0;
 	padding-left: 0;
@@ -293,6 +307,22 @@ table.summary td, table.summary th{
 	-moz-animation-duration: 1s;
 	-webkit-animation-name: fadein;
 	-webkit-animation-duration: 1s;
+}
+@-moz-keyframes fadein {
+	from{
+		opacity: 0.5;
+	}
+	to{
+		opacity:1;
+	}
+}
+@-webkit-keyframes fadein {
+	from{
+		opacity: 0.5;
+	}
+	to{
+		opacity:1;
+	}
 }
 /*.hux_loading{
 	-moz-animation-name: fadeout;
@@ -332,22 +362,7 @@ table.summary td, table.summary th{
 	}
 }
 
-@-moz-keyframes fadein {
-	from{
-		opacity: 0.5;
-	}
-	to{
-		opacity:1;
-	}
-}
-@-webkit-keyframes fadein {
-	from{
-		opacity: 0.5;
-	}
-	to{
-		opacity:1;
-	}
-}
+
 
 @-moz-keyframes slideout {
 	from{

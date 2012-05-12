@@ -83,7 +83,7 @@ HUX.ScriptInjecter = {
 	exec: function(aScripts){
 		if(aScripts.length === 0)
 			return;
-		var script = aScripts.pop();
+		var script = aScripts.shift();
 		if(script.src){
 			this.loadScript(script, aScripts);
 		}
@@ -104,7 +104,7 @@ HUX.ScriptInjecter = {
 		// we take the content of the script 
 		if(curScript.textContent)
 			script.textContent = curScript.textContent;
-		else if(curScript.innerHTML && typeof script.text !== "undefined")
+		else if(curScript.innerHTML && script.text !== undefined)
 			script.text = curScript.innerHTML;
 		// we insert it in a different thread
 		setTimeout(function(){

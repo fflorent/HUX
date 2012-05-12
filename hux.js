@@ -366,18 +366,22 @@ var HUX = {
 		var inner = {};
 		inner.fillingMethods = {
 			prepend: function(content, target){
-				var aInserted;
+				// NOTE : appendChild or insertBefore with a DocumentFragment returns the DocumentFragment (without childNodes)
+// 				// but we want the inserted content, so we copy these childNodes in a new array : 
+				var aInserted = Array.apply([], content.childNodes);
 				if(target.childNodes.length > 0){ // we use InsertBefore
-					firstChild = target.firstChild;
-					aInserted = target.insertBefore(content, firstChild);
+					target.insertBefore(content, target.firstChild);
 				}
 				else{ // if target has no children, we append 
-					aInserted = target.appendChild(content);
+					target.appendChild(content);
 				}
 				return aInserted;
 			},
 			append: function(content, target){
-				return target.appendChild(content);
+				// we copy the element inserted in a new array : 
+				var aInserted = Array.apply([], content.childNodes);
+				target.appendChild(content);
+				return aInserted;
 			},
 			replace: function(content, target){
 				pub.empty(target);
@@ -507,7 +511,6 @@ var HUX = {
 			}
 			return ret;
 		};
-		
 		return pub;
 	})(),
 	
@@ -534,6 +537,8 @@ var HUX = {
 		
 		HUX.HUXEvents.trigger("beforeInject", {target: target, content: DOMContent})
 		aInserted = HUX.Inject.proceed(target, method, DOMContent); 
+		// NOTE : aInserted returns the nodes that have been inserted in target, 
+		// but target can have children that are not in aInserted (content has been appended or prepended for example)
 		HUX.HUXEvents.trigger("afterInject", {target: target || document.body, children: aInserted});
 	},
 	/**
@@ -1781,6 +1786,7 @@ HUX.HashBang = (function(){
 		watch: function(){
 			try{
 				inner.handleIfChangement();
+				inner.watcher_cpt_ex = 0;
 			}
 			catch(ex){
 				HUX.logError(ex);
@@ -1904,7 +1910,7 @@ HUX.HashBang = (function(){
 				new_hash += "," + normalHash;
 			
 			if( new_hash !== location.hash.replace(/^#/, "") ){
-				inner.prev_hash = new_hash; // necessary in order to prevent another execution of changeHash via handleIfChangement
+				inner.prev_hash = "#"+new_hash; // necessary in order to prevent another execution of changeHash via handleIfChangement
 				location.hash = new_hash;
 			}
 			if(normalHash){
@@ -1920,7 +1926,8 @@ HUX.HashBang = (function(){
 		 */
 		applyNormalHash: function(){
 			if(pub.enabled && inner.normal_hash){
-				var hashTarget = HUX.Selector.byAttribute("a", "name='"+inner.normal_hash+"'")[0];
+				var hashTarget = document.getElementById(inner.normal_hash) || 
+					HUX.Selector.byAttribute("a", "name='"+inner.normal_hash+"'")[0];
 				if(hashTarget !== undefined){
 					hashTarget.scrollIntoView();
 					inner.normalHash = null;
@@ -1960,7 +1967,7 @@ HUX.HashBang = (function(){
 				if(!inner.IFrameHack.tmpDisableUpd){
 					var doc = this.iframe.contentWindow.document;
 					doc.open("javascript:'<html></html>'");
-					doc.write("<html><head><scri" + "pt type=\"text/javascript\">top.HUX.HashBang.inner.IFrameHack.setHash('"+location.hash+"');</scri" + "pt></head><body></body></html>");
+					doc.write("<html><head><scri" + "pt type=\"text/javascript\">parent.HUX.HashBang.inner.IFrameHack.setHash('"+location.hash+"'); </scri" + "pt></head><body></body></html>");
 					doc.close();
 				}
 				else
@@ -2562,8 +2569,8 @@ HUX.AtInclusion = (function(){
 		applyHash: function(){
 			var anchorToView;
 			if(inner.hash && pub.enabled ){
-				// we scroll to the anchor 
-				anchorToView = document.querySelector("a[name=\""+location.hash.replace(/^#/,"")+"\"]");
+				// we scroll to the element whose ID matches the hash, or to the anchor whose name matches the hash
+				anchorToView = document.querySelector(location.hash+", a[name=\""+location.hash.replace(/^#/,"")+"\"]");
 				if(anchorToView !== null){
 					anchorToView.scrollIntoView();
 					inner.hash = null;
@@ -3120,7 +3127,7 @@ HUX.ScriptInjecter = {
 	exec: function(aScripts){
 		if(aScripts.length === 0)
 			return;
-		var script = aScripts.pop();
+		var script = aScripts.shift();
 		if(script.src){
 			this.loadScript(script, aScripts);
 		}
@@ -3141,7 +3148,7 @@ HUX.ScriptInjecter = {
 		// we take the content of the script 
 		if(curScript.textContent)
 			script.textContent = curScript.textContent;
-		else if(curScript.innerHTML && typeof script.text !== "undefined")
+		else if(curScript.innerHTML && script.text !== undefined)
 			script.text = curScript.innerHTML;
 		// we insert it in a different thread
 		setTimeout(function(){

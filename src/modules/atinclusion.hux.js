@@ -215,8 +215,8 @@ HUX.AtInclusion = (function(){
 		applyHash: function(){
 			var anchorToView;
 			if(inner.hash && pub.enabled ){
-				// we scroll to the anchor 
-				anchorToView = document.querySelector("a[name=\""+location.hash.replace(/^#/,"")+"\"]");
+				// we scroll to the element whose ID matches the hash, or to the anchor whose name matches the hash
+				anchorToView = document.querySelector(location.hash+", a[name=\""+location.hash.replace(/^#/,"")+"\"]");
 				if(anchorToView !== null){
 					anchorToView.scrollIntoView();
 					inner.hash = null;

@@ -94,6 +94,7 @@ HUX.HashBang = (function(){
 		watch: function(){
 			try{
 				inner.handleIfChangement();
+				inner.watcher_cpt_ex = 0;
 			}
 			catch(ex){
 				HUX.logError(ex);
@@ -217,7 +218,7 @@ HUX.HashBang = (function(){
 				new_hash += "," + normalHash;
 			
 			if( new_hash !== location.hash.replace(/^#/, "") ){
-				inner.prev_hash = new_hash; // necessary in order to prevent another execution of changeHash via handleIfChangement
+				inner.prev_hash = "#"+new_hash; // necessary in order to prevent another execution of changeHash via handleIfChangement
 				location.hash = new_hash;
 			}
 			if(normalHash){
@@ -233,7 +234,8 @@ HUX.HashBang = (function(){
 		 */
 		applyNormalHash: function(){
 			if(pub.enabled && inner.normal_hash){
-				var hashTarget = HUX.Selector.byAttribute("a", "name='"+inner.normal_hash+"'")[0];
+				var hashTarget = document.getElementById(inner.normal_hash) || 
+					HUX.Selector.byAttribute("a", "name='"+inner.normal_hash+"'")[0];
 				if(hashTarget !== undefined){
 					hashTarget.scrollIntoView();
 					inner.normalHash = null;
@@ -273,7 +275,7 @@ HUX.HashBang = (function(){
 				if(!inner.IFrameHack.tmpDisableUpd){
 					var doc = this.iframe.contentWindow.document;
 					doc.open("javascript:'<html></html>'");
-					doc.write("<html><head><scri" + "pt type=\"text/javascript\">top.HUX.HashBang.inner.IFrameHack.setHash('"+location.hash+"');</scri" + "pt></head><body></body></html>");
+					doc.write("<html><head><scri" + "pt type=\"text/javascript\">parent.HUX.HashBang.inner.IFrameHack.setHash('"+location.hash+"'); </scri" + "pt></head><body></body></html>");
 					doc.close();
 				}
 				else

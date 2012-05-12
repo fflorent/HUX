@@ -365,18 +365,22 @@ var HUX = {
 		var inner = {};
 		inner.fillingMethods = {
 			prepend: function(content, target){
-				var aInserted;
+				// NOTE : appendChild or insertBefore with a DocumentFragment returns the DocumentFragment (without childNodes)
+// 				// but we want the inserted content, so we copy these childNodes in a new array : 
+				var aInserted = Array.apply([], content.childNodes);
 				if(target.childNodes.length > 0){ // we use InsertBefore
-					firstChild = target.firstChild;
-					aInserted = target.insertBefore(content, firstChild);
+					target.insertBefore(content, target.firstChild);
 				}
 				else{ // if target has no children, we append 
-					aInserted = target.appendChild(content);
+					target.appendChild(content);
 				}
 				return aInserted;
 			},
 			append: function(content, target){
-				return target.appendChild(content);
+				// we copy the element inserted in a new array : 
+				var aInserted = Array.apply([], content.childNodes);
+				target.appendChild(content);
+				return aInserted;
 			},
 			replace: function(content, target){
 				pub.empty(target);
@@ -506,7 +510,6 @@ var HUX = {
 			}
 			return ret;
 		};
-		
 		return pub;
 	})(),
 	
@@ -533,6 +536,8 @@ var HUX = {
 		
 		HUX.HUXEvents.trigger("beforeInject", {target: target, content: DOMContent})
 		aInserted = HUX.Inject.proceed(target, method, DOMContent); 
+		// NOTE : aInserted returns the nodes that have been inserted in target, 
+		// but target can have children that are not in aInserted (content has been appended or prepended for example)
 		HUX.HUXEvents.trigger("afterInject", {target: target || document.body, children: aInserted});
 	},
 	/**

@@ -106,7 +106,7 @@ HUX.ScriptInjecter = {
 			script.textContent = curScript.textContent;
 		else if(curScript.innerHTML && script.text !== undefined)
 			script.text = curScript.innerHTML;
-		// we insert it in a different thread
+		// xxxFlorent: the setTimeout might be useless here
 		setTimeout(function(){
 			head.insertBefore( script, head.firstChild );
 			head.removeChild( script ); 
